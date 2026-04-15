@@ -25,6 +25,10 @@
   #text(14pt, weight: "semibold", fill: runbook_primary)[#it.body]
 ]
 
+#let runbook_lead_in(body) = block(sticky: true)[
+  #body
+]
+
 #let runbook_cover(title, version, generated_at, logo_path) = [
   #align(center)[
     #v(2.2cm)
@@ -39,11 +43,14 @@
   ]
 ]
 
-#let runbook_figure(image_path, caption: none) = {
-  let body = image(image_path, width: 100%)
-  if caption == none {
-    figure(body)
-  } else {
-    figure(body, caption: caption)
-  }
+#let runbook_figure(image_path, caption: none, width: 100%) = {
+  align(center)[
+    #block(width: width, above: 0.8em, below: 1.1em, breakable: false)[
+      #image(image_path, width: 100%)
+      #if caption != none [
+        #v(0.35em)
+        #text(size: 9pt, fill: runbook_muted)[#caption]
+      ]
+    ]
+  ]
 }

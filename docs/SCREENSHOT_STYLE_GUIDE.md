@@ -53,6 +53,8 @@ Avoid grouping unrelated regions just to reduce annotation count.
 - Prefer clipped-region captures over full-page screenshots when the lesson lives inside one panel.
 - Clip to the smallest region that preserves context around the target action.
 - Use directional padding when a margin note needs extra room on one side of the frame.
+- Do not force tall, narrow screenshots to full page width. Render them narrower so the chapter text and figure can live on the same page.
+- Keep the setup sentence for a screenshot immediately above it. Runbook will try to keep that lead-in and figure on the same page.
 
 ## Editorial Quality Bar
 

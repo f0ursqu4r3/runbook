@@ -33,22 +33,22 @@ test("extracts heading title and falls back to filename", async () => {
   expect(chapters[1].title).toBe("02-no-title");
 });
 
-test("collects screenshot references with optional captions", async () => {
+test("collects screenshot references with optional captions and width", async () => {
   const dir = await makeChaptersDir({
     "ch.md": [
       "# Chapter",
       "",
       "![[screenshot:dashboard-empty]]",
       "",
-      "Inline ![[screenshot:settings-page caption=\"The settings page\"]] mid-paragraph."
+      "Inline ![[screenshot:settings-page width=\"68%\" caption=\"The settings page\"]] mid-paragraph."
     ].join("\n")
   });
 
   const [chapter] = await loadChapters(dir);
 
   expect(chapter.screenshotRefs).toEqual([
-    { id: "dashboard-empty", caption: undefined },
-    { id: "settings-page", caption: "The settings page" }
+    { id: "dashboard-empty", caption: undefined, widthPercent: undefined },
+    { id: "settings-page", caption: "The settings page", widthPercent: 68 }
   ]);
 });
 

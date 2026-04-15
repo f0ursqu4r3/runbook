@@ -13,7 +13,15 @@ type MarkdownBlock =
   | { type: "heading"; level: number; text: string }
   | { type: "paragraph"; text: string }
   | { type: "list"; items: string[] }
-  | { type: "screenshot"; id: string; caption?: string };
+  | { type: "screenshot"; id: string; caption?: string; widthPercent?: number };
+
+type RenderUnit =
+  | { type: "plain"; blocks: MarkdownBlock[] }
+  | {
+      type: "sticky-lead";
+      lead: MarkdownBlock[];
+      screenshot: Extract<MarkdownBlock, { type: "screenshot" }>;
+    };
 
 function escapeTypstText(value: string): string {
   return value
@@ -42,7 +50,8 @@ function parseMarkdown(body: string): MarkdownBlock[] {
       blocks.push({
         type: "screenshot",
         id: screenshotMatch.id,
-        caption: screenshotMatch.caption
+        caption: screenshotMatch.caption,
+        widthPercent: screenshotMatch.widthPercent
       });
       index += 1;
       continue;
@@ -109,9 +118,86 @@ function renderBlock(
         .split(path.sep)
         .join("/");
       const caption = block.caption ? `[${escapeTypstText(block.caption)}]` : "none";
-      return `#runbook_figure("${relativePath}", caption: ${caption})`;
+      const width = block.widthPercent ? `${block.widthPercent}%` : "100%";
+      return `#runbook_figure("${relativePath}", caption: ${caption}, width: ${width})`;
     }
   }
+}
+
+function renderBlocks(
+  blocks: MarkdownBlock[],
+  manifest: CaptureManifest,
+  typstSourcePath: string
+): string {
+  return blocks
+    .map((block) => renderBlock(block, manifest, typstSourcePath))
+    .join("\n\n");
+}
+
+function createRenderUnits(blocks: MarkdownBlock[]): RenderUnit[] {
+  const units: RenderUnit[] = [];
+  let index = 0;
+
+  while (index < blocks.length) {
+    const current = blocks[index];
+
+    if (current.type === "heading") {
+      const lead: MarkdownBlock[] = [current];
+      let cursor = index + 1;
+
+      while (cursor < blocks.length) {
+        const candidate = blocks[cursor];
+        if (candidate.type !== "paragraph" && candidate.type !== "list") {
+          break;
+        }
+        lead.push(candidate);
+        cursor += 1;
+      }
+
+      const next = blocks[cursor];
+      if (next?.type === "screenshot") {
+        units.push({
+          type: "sticky-lead",
+          lead,
+          screenshot: next
+        });
+        index = cursor + 1;
+        continue;
+      }
+    }
+
+    if (
+      (current.type === "paragraph" || current.type === "list") &&
+      blocks[index + 1]?.type === "screenshot"
+    ) {
+      units.push({
+        type: "sticky-lead",
+        lead: [current],
+        screenshot: blocks[index + 1] as Extract<MarkdownBlock, { type: "screenshot" }>
+      });
+      index += 2;
+      continue;
+    }
+
+    units.push({ type: "plain", blocks: [current] });
+    index += 1;
+  }
+
+  return units;
+}
+
+function renderUnit(
+  unit: RenderUnit,
+  manifest: CaptureManifest,
+  typstSourcePath: string
+): string {
+  if (unit.type === "plain") {
+    return renderBlocks(unit.blocks, manifest, typstSourcePath);
+  }
+
+  const lead = renderBlocks(unit.lead, manifest, typstSourcePath);
+  const screenshot = renderBlock(unit.screenshot, manifest, typstSourcePath);
+  return `#runbook_lead_in[\n${lead}\n]\n\n${screenshot}`;
 }
 
 export async function renderTypstSource(
@@ -127,11 +213,13 @@ export async function renderTypstSource(
     .join("/");
 
   const chapterMarkup = chapters
-    .map((chapter) =>
-      parseMarkdown(chapter.body)
-        .map((block) => renderBlock(block, manifest, config.paths.typstSourceFile))
-        .join("\n\n")
-    )
+    .map((chapter) => {
+      const blocks = parseMarkdown(chapter.body);
+      const units = createRenderUnits(blocks);
+      return units
+        .map((unit) => renderUnit(unit, manifest, config.paths.typstSourceFile))
+        .join("\n\n");
+    })
     .join("\n\n#pagebreak()\n\n");
 
   return [

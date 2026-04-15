@@ -40,12 +40,14 @@ export function defineFlow(meta, run) {
           const resolved =
             typeof annotations === "function" ? annotations(ui) : annotations;
 
+          const { dim, dimOpacity, ...shotOptions } = options;
+
           if (resolved.length > 0) {
-            await ctx.annotate(resolved);
+            await ctx.annotate(resolved, { dim, dimOpacity });
           } else {
             await ctx.clearAnnotations();
           }
-          await ctx.shot(id, options);
+          await ctx.shot(id, shotOptions);
         }
       };
 

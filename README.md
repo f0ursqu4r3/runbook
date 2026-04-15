@@ -2,6 +2,8 @@
 
 Runbook is a CLI-first system for executable product manuals. It turns authored Markdown, scripted UI flows, and branded Typst templates into a single build pipeline.
 
+The main operator guide is [docs/USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/USAGE.md).
+
 ## Current Status
 
 This repository now includes:

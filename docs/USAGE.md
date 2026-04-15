@@ -147,11 +147,19 @@ Use this exact format:
 ![[screenshot:login-screen caption="Users start from a stable sign-in screen."]]
 ```
 
+For tall or narrow screenshots, you can reduce the rendered figure width:
+
+```md
+![[screenshot:sidebar width="68%" caption="Treat the sidebar as the operator's stable home base."]]
+```
+
 Rules:
 
 - Screenshot IDs must match the pattern `[a-z0-9-]+`.
 - The `caption` is optional.
+- `width` is optional and accepts integer percentages from `10%` to `100%`.
 - Every referenced screenshot ID must be declared by some flow.
+- When a heading or lead-in paragraph sits immediately before a screenshot, Runbook keeps that lead-in attached to the figure when possible so sections do not split awkwardly across pages.
 
 Example chapter:
 
@@ -169,7 +177,7 @@ This chapter demonstrates how authored prose references executable screenshots.
 
 Flows define how screenshots are produced. Each flow exports metadata plus an async function.
 
-Use the helper in [manual/flows/_flow-helpers.mjs](/Users/la.kyle.dougan/git/eos/runbook/manual/flows/_flow-helpers.mjs) unless you have a strong reason not to.
+Use the helper in [manual/flows/_flow-helpers.mjs](manual/flows/_flow-helpers.mjs) unless you have a strong reason not to.
 
 Example:
 
@@ -275,7 +283,7 @@ await flow.capture("dashboard-panels", (ui) => [
 });
 ```
 
-See [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md) for the visual rules that keep captures professional and consistent.
+See [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md) for the visual rules that keep captures professional and consistent.
 
 ## Commands
 
@@ -340,31 +348,6 @@ The right pattern is:
 
 For real applications, do not capture against live auth or live production data unless you explicitly want documentation to depend on them. That makes manuals flaky and non-repeatable.
 
-### Sample Example
-
-This repository includes a working example profile under [manual/sample](/Users/la.kyle.dougan/git/eos/runbook/manual/sample).
-
-Start Sample in mocked mode:
-
-```bash
-cd /Users/la.kyle.dougan/git/eos/sample-ui/fe
-VITE_E2E=true bun run dev -- --port 51173
-```
-
-Then build the manual from this repo:
-
-```bash
-cd /Users/la.kyle.dougan/git/eos/runbook
-bun run runbook:sample:build
-```
-
-That writes the example artifacts to:
-
-- `dist/sample/screenshots`
-- `dist/sample/reports`
-- `dist/sample/manual.typ`
-- `dist/sample/manual.pdf`
-
 ## Troubleshooting
 
 `Required path is missing`
@@ -411,7 +394,7 @@ Screenshots look noisy or over-annotated
 - Tighten the crop with `clipTo`.
 - Move explanatory detail into chapter prose.
 - Reduce to one primary note card per screenshot.
-- Review [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md).
+- Review [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md).
 
 ## Recommended Workflow
 

@@ -41,6 +41,7 @@ export type Chapter = {
 export type ScreenshotReference = {
   id: string;
   caption?: string;
+  widthPercent?: number;
 };
 
 export type Annotation = {

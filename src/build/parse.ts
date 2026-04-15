@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { listFiles, readText } from "../shared/fs.js";
-import { createScreenshotPattern } from "../shared/screenshot-pattern.js";
+import { createScreenshotPattern, matchScreenshot } from "../shared/screenshot-pattern.js";
 import type { Chapter, ScreenshotReference } from "../shared/types.js";
 
 function extractTitle(body: string, filePath: string): string {
@@ -12,10 +12,10 @@ function extractTitle(body: string, filePath: string): string {
 function extractScreenshotRefs(body: string): ScreenshotReference[] {
   const refs: ScreenshotReference[] = [];
   for (const match of body.matchAll(createScreenshotPattern("gi"))) {
-    refs.push({
-      id: match[1],
-      caption: match[2]
-    });
+    const screenshot = matchScreenshot(match[0]);
+    if (screenshot) {
+      refs.push(screenshot);
+    }
   }
   return refs;
 }

@@ -80,8 +80,8 @@ test("renders screenshot blocks via runbook_figure with relative path", async ()
     {
       path: "x.md",
       title: "X",
-      body: "# X\n\n![[screenshot:hero caption=\"Hero shot\"]]\n",
-      screenshotRefs: [{ id: "hero", caption: "Hero shot" }]
+      body: "# X\n\n![[screenshot:hero width=\"72%\" caption=\"Hero shot\"]]\n",
+      screenshotRefs: [{ id: "hero", caption: "Hero shot", widthPercent: 72 }]
     }
   ];
   const m = manifest([
@@ -92,6 +92,45 @@ test("renders screenshot blocks via runbook_figure with relative path", async ()
 
   expect(source).toContain("#runbook_figure(\"shots/hero.png\"");
   expect(source).toContain("[Hero shot]");
+  expect(source).toContain("width: 72%");
+});
+
+test("keeps heading lead-in attached to the next screenshot", async () => {
+  const { config } = await makeConfigFixture();
+  const chapters: Chapter[] = [
+    {
+      path: "x.md",
+      title: "X",
+      body: [
+        "# X",
+        "",
+        "## Planning Tool",
+        "",
+        "Use this workspace to narrow sensors and targets before deeper analysis.",
+        "",
+        '![[screenshot:planning-tool caption="Refine the candidate set before switching views."]]',
+        "",
+        "Follow-up prose can still flow after the figure."
+      ].join("\n"),
+      screenshotRefs: [{ id: "planning-tool", caption: "Refine the candidate set before switching views." }]
+    }
+  ];
+  const m = manifest([
+    {
+      id: "planning-tool",
+      flowId: "f",
+      path: path.join(config.paths.screenshotsDir, "planning-tool.png")
+    }
+  ]);
+
+  const source = await renderTypstSource(config, chapters, m);
+
+  expect(source).toContain("#runbook_lead_in[");
+  expect(source).toContain("== Planning Tool");
+  expect(source).toContain("#runbook_figure(\"shots/planning-tool.png\"");
+  expect(source.indexOf("#runbook_lead_in[")).toBeLessThan(
+    source.indexOf("#runbook_figure(\"shots/planning-tool.png\"")
+  );
 });
 
 test("escapes typst-special characters in text", async () => {
