@@ -5,10 +5,9 @@ import { promisify } from "node:util";
 import type { BuildSummary, CaptureManifest, Chapter, RunbookConfig } from "../shared/types.js";
 import { RunbookError } from "../shared/errors.js";
 import { readText, writeText } from "../shared/fs.js";
+import { matchScreenshot, createScreenshotPattern } from "../shared/screenshot-pattern.js";
 
 const execFileAsync = promisify(execFile);
-const SCREENSHOT_PATTERN =
-  /!\[\[screenshot:([a-z0-9-]+)(?:\s+caption="([^"]+)")?\]\]/i;
 
 type MarkdownBlock =
   | { type: "heading"; level: number; text: string }
@@ -38,12 +37,12 @@ function parseMarkdown(body: string): MarkdownBlock[] {
       continue;
     }
 
-    const screenshotMatch = line.match(SCREENSHOT_PATTERN);
+    const screenshotMatch = matchScreenshot(line);
     if (screenshotMatch) {
       blocks.push({
         type: "screenshot",
-        id: screenshotMatch[1],
-        caption: screenshotMatch[2]
+        id: screenshotMatch.id,
+        caption: screenshotMatch.caption
       });
       index += 1;
       continue;
@@ -76,8 +75,7 @@ function parseMarkdown(body: string): MarkdownBlock[] {
       if (!candidate || candidate.startsWith("- ") || candidate.startsWith("#")) {
         break;
       }
-      if (SCREENSHOT_PATTERN.test(candidate)) {
-        SCREENSHOT_PATTERN.lastIndex = 0;
+      if (createScreenshotPattern("i").test(candidate)) {
         break;
       }
       paragraph.push(candidate);
@@ -116,7 +114,7 @@ function renderBlock(
   }
 }
 
-async function renderTypstSource(
+export async function renderTypstSource(
   config: RunbookConfig,
   chapters: Chapter[],
   manifest: CaptureManifest

@@ -1,10 +1,8 @@
 import path from "node:path";
 
 import { listFiles, readText } from "../shared/fs.js";
+import { createScreenshotPattern } from "../shared/screenshot-pattern.js";
 import type { Chapter, ScreenshotReference } from "../shared/types.js";
-
-const SCREENSHOT_PATTERN =
-  /!\[\[screenshot:([a-z0-9-]+)(?:\s+caption="([^"]+)")?\]\]/gi;
 
 function extractTitle(body: string, filePath: string): string {
   const firstHeading = body.match(/^#\s+(.+)$/m);
@@ -13,7 +11,7 @@ function extractTitle(body: string, filePath: string): string {
 
 function extractScreenshotRefs(body: string): ScreenshotReference[] {
   const refs: ScreenshotReference[] = [];
-  for (const match of body.matchAll(SCREENSHOT_PATTERN)) {
+  for (const match of body.matchAll(createScreenshotPattern("gi"))) {
     refs.push({
       id: match[1],
       caption: match[2]

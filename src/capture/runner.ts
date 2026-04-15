@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 
 import { applyAnnotations, clearAnnotations } from "./annotate.js";
 import { resetDir, writeText, listFiles } from "../shared/fs.js";
-import { RunbookError } from "../shared/errors.js";
+import { FlowStepError, RunbookError } from "../shared/errors.js";
 import type {
   CaptureManifest,
   FlowContext,
@@ -67,6 +67,134 @@ export async function discoverFlows(flowsDir: string): Promise<FlowFile[]> {
   return flows;
 }
 
+async function runFlow(
+  flow: FlowFile,
+  config: RunbookConfig,
+  browserContext: import("playwright").BrowserContext,
+  entries: CaptureManifest["entries"]
+): Promise<void> {
+  const page = await browserContext.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
+  let currentStep = "initializing";
+
+  const wrap = async <T>(action: () => Promise<T>): Promise<T> => {
+    try {
+      return await action();
+    } catch (error) {
+      if (error instanceof FlowStepError) throw error;
+      throw new FlowStepError(flow.id, currentStep, error);
+    }
+  };
+
+  const flowContext: FlowContext = {
+    page,
+    annotate: (annotations) => wrap(() => applyAnnotations(page, annotations)),
+    clearAnnotations: () => wrap(() => clearAnnotations(page)),
+    shot: (id, options = {}) =>
+      wrap(async () => {
+        if (!flow.screenshots.includes(id)) {
+          throw new RunbookError(`Flow ${flow.id} attempted undeclared screenshot id "${id}"`);
+        }
+
+        const screenshotPath = path.join(config.paths.screenshotsDir, `${id}.png`);
+        const clip = await resolveClip(page, options);
+        await page.screenshot({
+          path: screenshotPath,
+          fullPage: clip ? false : options.fullPage ?? true,
+          clip: clip ?? undefined,
+          animations: "disabled"
+        });
+
+        entries.push({
+          id,
+          flowId: flow.id,
+          path: screenshotPath,
+          step: currentStep
+        });
+      }),
+    step: async (name, fn) => {
+      currentStep = name;
+      try {
+        return await fn();
+      } catch (error) {
+        if (error instanceof FlowStepError) throw error;
+        throw new FlowStepError(flow.id, name, error);
+      }
+    }
+  };
+
+  try {
+    await flow.run(flowContext);
+    const declared = [...flow.screenshots].sort().join("|");
+    const captured = entries
+      .filter((entry) => entry.flowId === flow.id)
+      .map((entry) => entry.id)
+      .sort()
+      .join("|");
+    if (declared !== captured) {
+      throw new RunbookError(
+        `Flow ${flow.id} declared screenshots [${flow.screenshots.join(", ")}] but captured [${entries
+          .filter((entry) => entry.flowId === flow.id)
+          .map((entry) => entry.id)
+          .join(", ")}]`
+      );
+    }
+  } catch (error) {
+    const failurePath = path.join(config.paths.reportsDir, `${flow.id}-failure.png`);
+    await page.screenshot({
+      path: failurePath,
+      fullPage: true,
+      animations: "disabled"
+    });
+    const cause =
+      error instanceof FlowStepError && error.cause instanceof Error
+        ? error.cause.message
+        : undefined;
+    await writeText(
+      config.paths.captureReportFile,
+      JSON.stringify(
+        {
+          ok: false,
+          flowId: flow.id,
+          step: currentStep,
+          failurePath,
+          message: error instanceof Error ? error.message : "Unknown flow failure",
+          cause
+        },
+        null,
+        2
+      )
+    );
+    throw error;
+  } finally {
+    await page.close();
+  }
+}
+
+async function runWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  const queue = items.slice();
+  let firstError: unknown = null;
+
+  const runners = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0 && firstError === null) {
+      const next = queue.shift();
+      if (next === undefined) return;
+      try {
+        await worker(next);
+      } catch (error) {
+        if (firstError === null) firstError = error;
+      }
+    }
+  });
+
+  await Promise.all(runners);
+  if (firstError !== null) throw firstError;
+}
+
 export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Promise<CaptureManifest> {
   await resetDir(config.paths.screenshotsDir);
   await resetDir(config.paths.reportsDir);
@@ -86,89 +214,10 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
     Math.random = () => 0.123456789;
   });
 
+  const concurrency = Math.max(1, config.captureConcurrency ?? 4);
+
   try {
-    for (const flow of flows) {
-      const page = await context.newPage();
-      await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
-      let currentStep = "initializing";
-
-      const flowContext: FlowContext = {
-        page,
-        annotate: async (annotations) => {
-          await applyAnnotations(page, annotations);
-        },
-        clearAnnotations: async () => {
-          await clearAnnotations(page);
-        },
-        shot: async (id, options = {}) => {
-          if (!flow.screenshots.includes(id)) {
-            throw new RunbookError(`Flow ${flow.id} attempted undeclared screenshot id "${id}"`);
-          }
-
-          const screenshotPath = path.join(config.paths.screenshotsDir, `${id}.png`);
-          const clip = await resolveClip(page, options);
-          await page.screenshot({
-            path: screenshotPath,
-            fullPage: clip ? false : options.fullPage ?? true,
-            clip: clip ?? undefined,
-            animations: "disabled"
-          });
-
-          entries.push({
-            id,
-            flowId: flow.id,
-            path: screenshotPath,
-            step: currentStep
-          });
-        },
-        step: async (name, fn) => {
-          currentStep = name;
-          return fn();
-        }
-      };
-
-      try {
-        await flow.run(flowContext);
-        const declared = [...flow.screenshots].sort().join("|");
-        const captured = entries
-          .filter((entry) => entry.flowId === flow.id)
-          .map((entry) => entry.id)
-          .sort()
-          .join("|");
-        if (declared !== captured) {
-          throw new RunbookError(
-            `Flow ${flow.id} declared screenshots [${flow.screenshots.join(", ")}] but captured [${entries
-              .filter((entry) => entry.flowId === flow.id)
-              .map((entry) => entry.id)
-              .join(", ")}]`
-          );
-        }
-      } catch (error) {
-        const failurePath = path.join(config.paths.reportsDir, `${flow.id}-failure.png`);
-        await page.screenshot({
-          path: failurePath,
-          fullPage: true,
-          animations: "disabled"
-        });
-        await writeText(
-          config.paths.captureReportFile,
-          JSON.stringify(
-            {
-              ok: false,
-              flowId: flow.id,
-              step: currentStep,
-              failurePath,
-              message: error instanceof Error ? error.message : "Unknown flow failure"
-            },
-            null,
-            2
-          )
-        );
-        throw error;
-      } finally {
-        await page.close();
-      }
-    }
+    await runWithConcurrency(flows, concurrency, (flow) => runFlow(flow, config, context, entries));
 
     const manifest: CaptureManifest = {
       generatedAt: new Date().toISOString(),

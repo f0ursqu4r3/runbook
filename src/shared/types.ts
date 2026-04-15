@@ -8,6 +8,7 @@ export type RunbookConfig = {
   viewport: { width: number; height: number };
   locale: string;
   timezone: string;
+  captureConcurrency?: number;
   theme: {
     primary: string;
     accent: string;
