@@ -9,24 +9,41 @@ import { RunbookError } from "../shared/errors.js";
 import type { CaptureManifest, FlowContext, FlowFile, RunbookConfig } from "../shared/types.js";
 
 type FlowModule = {
-  meta: {
+  meta?: {
     id: string;
     screenshots: string[];
   };
-  default: (ctx: FlowContext) => Promise<void>;
+  default:
+    | ((ctx: FlowContext) => Promise<void>)
+    | {
+        meta: {
+          id: string;
+          screenshots: string[];
+        };
+        default: (ctx: FlowContext) => Promise<void>;
+      };
 };
 
 async function loadFlow(flowPath: string): Promise<FlowFile> {
   const module = (await import(pathToFileURL(path.resolve(flowPath)).href)) as FlowModule;
-  if (!module.meta?.id || !Array.isArray(module.meta?.screenshots) || typeof module.default !== "function") {
+  const exportedFlow =
+    typeof module.default === "function"
+      ? { meta: module.meta, run: module.default }
+      : { meta: module.default?.meta, run: module.default?.default };
+
+  if (
+    !exportedFlow.meta?.id ||
+    !Array.isArray(exportedFlow.meta?.screenshots) ||
+    typeof exportedFlow.run !== "function"
+  ) {
     throw new RunbookError(`Flow module is invalid: ${flowPath}`);
   }
 
   return {
     path: flowPath,
-    id: module.meta.id,
-    screenshots: module.meta.screenshots,
-    run: module.default
+    id: exportedFlow.meta.id,
+    screenshots: exportedFlow.meta.screenshots,
+    run: exportedFlow.run
   };
 }
 
@@ -35,6 +52,9 @@ export async function discoverFlows(flowsDir: string): Promise<FlowFile[]> {
   const flows: FlowFile[] = [];
 
   for (const filePath of files) {
+    if (path.basename(filePath).startsWith("_")) {
+      continue;
+    }
     flows.push(await loadFlow(filePath));
   }
 

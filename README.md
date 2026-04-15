@@ -37,6 +37,26 @@ For local PDF builds, `typst` must also be available on your `PATH`.
 
 Runtime-loaded project files currently use `.mjs` so the scaffold works both through Bun in development and plain Node after TypeScript compilation.
 
+Flow authoring is centered on `manual/flows/_flow-helpers.mjs`, which provides `defineFlow(...)` plus small helpers like `render(...)` and `capture(...)` so flow files stay declarative.
+
+Example:
+
+```js
+import { defineFlow } from "./_flow-helpers.mjs";
+import { loginScreenHtml } from "../fixtures/sample-app.mjs";
+
+export default defineFlow(
+  { id: "login", screenshots: ["login-screen"] },
+  async (flow) => {
+    await flow.render(loginScreenHtml(), "Render login screen");
+    await flow.capture("login-screen", [
+      { type: "box", target: "[data-testid='login-card']" },
+      { type: "arrow", target: "[data-testid='submit']", label: "Sign in" }
+    ]);
+  }
+);
+```
+
 ## Project Layout
 
 ```text

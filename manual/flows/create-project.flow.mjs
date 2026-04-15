@@ -1,16 +1,12 @@
 import { createProjectHtml, settingsSaveHtml } from "../fixtures/sample-app.mjs";
+import { defineFlow } from "./_flow-helpers.mjs";
 
-export const meta = {
+export default defineFlow({
   id: "create-project",
   screenshots: ["create-project", "settings-save"]
-};
-
-export default async function createProjectFlow(ctx) {
-  await ctx.step("Open project creation view", async () => {
-    await ctx.page.setContent(createProjectHtml(), { waitUntil: "load" });
-  });
-
-  await ctx.annotate([
+}, async (flow) => {
+  await flow.render(createProjectHtml(), "Open project creation view");
+  await flow.capture("create-project", [
     { type: "box", target: "[data-testid='project-form']" },
     { type: "step", target: "[data-testid='project-name']", number: 1 },
     {
@@ -20,13 +16,9 @@ export default async function createProjectFlow(ctx) {
       side: "bottom"
     }
   ]);
-  await ctx.shot("create-project");
 
-  await ctx.step("Open settings detail", async () => {
-    await ctx.page.setContent(settingsSaveHtml(), { waitUntil: "load" });
-  });
-
-  await ctx.annotate([
+  await flow.render(settingsSaveHtml(), "Open settings detail");
+  await flow.capture("settings-save", [
     { type: "box", target: "[data-testid='settings-panel']" },
     { type: "step", target: "[data-testid='org-name']", number: 1 },
     {
@@ -36,5 +28,4 @@ export default async function createProjectFlow(ctx) {
       side: "right"
     }
   ]);
-  await ctx.shot("settings-save");
-}
+});

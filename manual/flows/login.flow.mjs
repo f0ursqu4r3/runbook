@@ -1,16 +1,12 @@
 import { loginScreenHtml } from "../fixtures/sample-app.mjs";
+import { defineFlow } from "./_flow-helpers.mjs";
 
-export const meta = {
+export default defineFlow({
   id: "login",
   screenshots: ["login-screen"]
-};
-
-export default async function loginFlow(ctx) {
-  await ctx.step("Render login screen", async () => {
-    await ctx.page.setContent(loginScreenHtml(), { waitUntil: "load" });
-  });
-
-  await ctx.annotate([
+}, async (flow) => {
+  await flow.render(loginScreenHtml(), "Render login screen");
+  await flow.capture("login-screen", [
     { type: "box", target: "[data-testid='login-card']" },
     { type: "step", target: "[data-testid='email']", number: 1 },
     { type: "label", target: "[data-testid='password']", text: "Use seeded credentials" },
@@ -21,6 +17,4 @@ export default async function loginFlow(ctx) {
       side: "right"
     }
   ]);
-
-  await ctx.shot("login-screen");
-}
+});

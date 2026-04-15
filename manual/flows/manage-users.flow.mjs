@@ -1,16 +1,12 @@
 import { manageUsersHtml } from "../fixtures/sample-app.mjs";
+import { defineFlow } from "./_flow-helpers.mjs";
 
-export const meta = {
+export default defineFlow({
   id: "manage-users",
   screenshots: ["manage-users"]
-};
-
-export default async function manageUsersFlow(ctx) {
-  await ctx.step("Render user management", async () => {
-    await ctx.page.setContent(manageUsersHtml(), { waitUntil: "load" });
-  });
-
-  await ctx.annotate([
+}, async (flow) => {
+  await flow.render(manageUsersHtml(), "Render user management");
+  await flow.capture("manage-users", [
     { type: "box", target: "[data-testid='users-table']" },
     { type: "redact", target: "[data-testid='user-email']" },
     {
@@ -20,6 +16,4 @@ export default async function manageUsersFlow(ctx) {
       side: "left"
     }
   ]);
-
-  await ctx.shot("manage-users");
-}
+});
