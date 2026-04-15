@@ -19,10 +19,13 @@ This repository now includes:
 
 ```bash
 bun install
+bunx playwright install chromium
 bun run runbook:check
 bun run runbook:capture
 bun run runbook:build
 ```
+
+For local PDF builds, `typst` must also be available on your `PATH`.
 
 ## Commands
 
@@ -30,6 +33,7 @@ bun run runbook:build
 - `bun run runbook:capture` runs the Playwright flows and emits real screenshot artifacts plus a manifest.
 - `bun run runbook:build` validates the manual, captures screenshots, generates Typst, and compiles the final PDF.
 - `bun run dev` runs the same build in a lightweight dev loop entrypoint.
+- `bun test` runs repository tests, including the capture failure-path test that asserts report output.
 
 Runtime-loaded project files currently use `.mjs` so the scaffold works both through Bun in development and plain Node after TypeScript compilation.
 
@@ -43,3 +47,13 @@ dist/
 ```
 
 See [docs/BRIEF.md](/Users/la.kyle.dougan/git/eos/runbook/docs/BRIEF.md) for the full product direction.
+
+## CI
+
+GitHub Actions runs:
+
+- typechecking
+- Bun tests
+- Playwright Chromium capture
+- Typst PDF compilation
+- artifact upload for the generated manual

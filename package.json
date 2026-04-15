@@ -11,6 +11,7 @@
     "build": "bunx tsc -p tsconfig.json",
     "check": "bunx tsc -p tsconfig.json --noEmit",
     "dev": "bun run src/cli.ts dev",
+    "test": "bun test",
     "runbook": "bun run src/cli.ts",
     "runbook:build": "bun run src/cli.ts build",
     "runbook:capture": "bun run src/cli.ts capture",
