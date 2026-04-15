@@ -41,11 +41,13 @@ export type ScreenshotReference = {
 };
 
 export type Annotation = {
-  type: "arrow" | "box" | "step" | "label" | "redact";
+  type: "arrow" | "box" | "step" | "label" | "redact" | "focus";
   target: string;
+  title?: string;
   label?: string;
   text?: string;
   color?: string;
+  tone?: "accent" | "info" | "neutral" | "danger";
   side?: "top" | "right" | "bottom" | "left";
   number?: number;
 };

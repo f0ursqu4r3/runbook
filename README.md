@@ -49,13 +49,20 @@ export default defineFlow(
   { id: "login", screenshots: ["login-screen"] },
   async (flow) => {
     await flow.render(loginScreenHtml(), "Render login screen");
-    await flow.capture("login-screen", [
-      { type: "box", target: "[data-testid='login-card']" },
-      { type: "arrow", target: "[data-testid='submit']", label: "Sign in" }
+    await flow.capture("login-screen", (ui) => [
+      ui.focus("[data-testid='login-card']", { tone: "accent" }),
+      ui.box("[data-testid='login-card']", { tone: "accent" }),
+      ui.arrow("[data-testid='submit']", {
+        title: "Sign In",
+        text: "Continue the documented flow.",
+        tone: "accent"
+      })
     ]);
   }
 );
 ```
+
+The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, and `ui.redact`. Those map to a more polished visual system with glow treatments, glass panels, curved connectors, and richer callout cards intended for modern release-quality documentation.
 
 ## Project Layout
 
