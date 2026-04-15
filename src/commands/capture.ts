@@ -3,8 +3,8 @@ import { validateFlows, validateProjectScaffold } from "../build/validate.js";
 import { discoverFlows, runCapture } from "../capture/runner.js";
 import { log } from "../shared/logging.js";
 
-export async function runCaptureCommand(): Promise<void> {
-  const config = await loadConfig();
+export async function runCaptureCommand(configPath?: string): Promise<void> {
+  const config = await loadConfig(configPath);
   await validateProjectScaffold(config);
 
   const flows = await discoverFlows(config.paths.flowsDir);

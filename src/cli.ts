@@ -7,21 +7,44 @@ import { runDev } from "./commands/dev.js";
 
 type Command = "build" | "capture" | "check" | "dev";
 
+function parseArgs(argv: string[]): { command: Command; configPath?: string } {
+  let command: Command = "build";
+  let commandSet = false;
+  let configPath: string | undefined;
+
+  for (let index = 2; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === "--config") {
+      configPath = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (!arg.startsWith("--") && !commandSet) {
+      command = arg as Command;
+      commandSet = true;
+    }
+  }
+
+  return { command, configPath };
+}
+
 async function main(): Promise<void> {
-  const command = (process.argv[2] ?? "build") as Command;
+  const { command, configPath } = parseArgs(process.argv);
 
   switch (command) {
     case "build":
-      await runBuild();
+      await runBuild(configPath);
       return;
     case "capture":
-      await runCaptureCommand();
+      await runCaptureCommand(configPath);
       return;
     case "check":
-      await runCheck();
+      await runCheck(configPath);
       return;
     case "dev":
-      await runDev();
+      await runDev(configPath);
       return;
     default:
       throw new RunbookError(`Unknown command: ${command}`);

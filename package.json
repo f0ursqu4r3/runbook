@@ -15,7 +15,10 @@
     "runbook": "bun run src/cli.ts",
     "runbook:build": "bun run src/cli.ts build",
     "runbook:capture": "bun run src/cli.ts capture",
-    "runbook:check": "bun run src/cli.ts check"
+    "runbook:check": "bun run src/cli.ts check",
+    "runbook:sample:build": "bun run src/cli.ts build --config manual/sample/manual.config.mjs",
+    "runbook:sample:capture": "bun run src/cli.ts capture --config manual/sample/manual.config.mjs",
+    "runbook:sample:check": "bun run src/cli.ts check --config manual/sample/manual.config.mjs"
   },
   "engines": {
     "node": ">=20",

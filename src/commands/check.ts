@@ -9,8 +9,8 @@ import {
 } from "../build/validate.js";
 import { log } from "../shared/logging.js";
 
-export async function runCheck(): Promise<void> {
-  const config = await loadConfig();
+export async function runCheck(configPath?: string): Promise<void> {
+  const config = await loadConfig(configPath);
   await validateProjectScaffold(config);
 
   const chapters = await loadChapters(config.paths.chaptersDir);

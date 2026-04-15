@@ -201,6 +201,7 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
+    baseURL: config.baseUrl,
     viewport: config.viewport,
     locale: config.locale,
     timezoneId: config.timezone,

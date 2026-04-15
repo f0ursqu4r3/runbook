@@ -11,8 +11,8 @@ import {
 import { discoverFlows, runCapture } from "../capture/runner.js";
 import { log } from "../shared/logging.js";
 
-export async function runBuild(): Promise<void> {
-  const config = await loadConfig();
+export async function runBuild(configPath?: string): Promise<void> {
+  const config = await loadConfig(configPath);
   await validateProjectScaffold(config);
 
   const chapters = await loadChapters(config.paths.chaptersDir);
