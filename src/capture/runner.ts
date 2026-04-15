@@ -88,7 +88,7 @@ async function runFlow(
 
   const flowContext: FlowContext = {
     page,
-    annotate: (annotations) => wrap(() => applyAnnotations(page, annotations)),
+    annotate: (annotations, options) => wrap(() => applyAnnotations(page, annotations, options)),
     clearAnnotations: () => wrap(() => clearAnnotations(page)),
     shot: (id, options = {}) =>
       wrap(async () => {
@@ -203,6 +203,7 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
   const context = await browser.newContext({
     baseURL: config.baseUrl,
     viewport: config.viewport,
+    deviceScaleFactor: config.deviceScaleFactor ?? 2,
     locale: config.locale,
     timezoneId: config.timezone,
     colorScheme: "light"
@@ -278,17 +279,38 @@ async function resolveClip(
         throw new Error(`Clip target not found: ${missing}`);
       }
 
-      const rects = elements.map((element) => (element as HTMLElement).getBoundingClientRect());
-      const left = Math.max(0, Math.min(...rects.map((item) => item.left)) - pad.left);
-      const top = Math.max(0, Math.min(...rects.map((item) => item.top)) - pad.top);
-      const right = Math.min(
-        window.innerWidth,
-        Math.max(...rects.map((item) => item.right)) + pad.right
-      );
-      const bottom = Math.min(
-        window.innerHeight,
-        Math.max(...rects.map((item) => item.bottom)) + pad.bottom
-      );
+      const targetRects = elements.map((element) => (element as HTMLElement).getBoundingClientRect());
+      let left = Math.min(...targetRects.map((item) => item.left)) - pad.left;
+      let top = Math.min(...targetRects.map((item) => item.top)) - pad.top;
+      let right = Math.max(...targetRects.map((item) => item.right)) + pad.right;
+      let bottom = Math.max(...targetRects.map((item) => item.bottom)) + pad.bottom;
+
+      const overlay = document.getElementById("__runbook_overlay__");
+      if (overlay) {
+        const overlayMargin = 32;
+        const overlayElements: Element[] = [];
+        for (const child of Array.from(overlay.children)) {
+          if (child.getAttribute("data-runbook-dim") === "true") continue;
+          if (child.tagName.toLowerCase() === "svg") {
+            overlayElements.push(...Array.from(child.children).filter((c) => c.tagName.toLowerCase() !== "defs"));
+          } else {
+            overlayElements.push(child);
+          }
+        }
+        for (const element of overlayElements) {
+          const r = element.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          left = Math.min(left, r.left - overlayMargin);
+          top = Math.min(top, r.top - overlayMargin);
+          right = Math.max(right, r.right + overlayMargin);
+          bottom = Math.max(bottom, r.bottom + overlayMargin);
+        }
+      }
+
+      left = Math.max(0, left);
+      top = Math.max(0, top);
+      right = Math.min(window.innerWidth, right);
+      bottom = Math.min(window.innerHeight, bottom);
 
       return {
         x: Math.floor(left),

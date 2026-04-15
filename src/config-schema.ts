@@ -12,6 +12,7 @@ export const RunbookConfigSchema = z.object({
   locale: z.string().min(2),
   timezone: z.string().min(1),
   captureConcurrency: z.number().int().positive().optional(),
+  deviceScaleFactor: z.number().positive().optional(),
   theme: z.object({
     primary: z.string().min(1),
     accent: z.string().min(1),
@@ -21,6 +22,7 @@ export const RunbookConfigSchema = z.object({
     chaptersDir: z.string().min(1),
     flowsDir: z.string().min(1),
     assetsDir: z.string().min(1),
+    logoFile: z.string().min(1).optional(),
     templateFile: z.string().min(1),
     outputDir: z.string().min(1),
     typstSourceFile: z.string().min(1),

@@ -9,6 +9,7 @@ export type RunbookConfig = {
   locale: string;
   timezone: string;
   captureConcurrency?: number;
+  deviceScaleFactor?: number;
   theme: {
     primary: string;
     accent: string;
@@ -18,6 +19,7 @@ export type RunbookConfig = {
     chaptersDir: string;
     flowsDir: string;
     assetsDir: string;
+    logoFile?: string;
     templateFile: string;
     outputDir: string;
     typstSourceFile: string;
@@ -52,6 +54,7 @@ export type Annotation = {
   tone?: "accent" | "info" | "neutral" | "danger";
   side?: "top" | "right" | "bottom" | "left";
   number?: number;
+  highlight?: boolean;
 };
 
 export type ShotOptions = {
@@ -67,9 +70,14 @@ export type ShotOptions = {
       };
 };
 
+export type AnnotateOptions = {
+  dim?: boolean;
+  dimOpacity?: number;
+};
+
 export type FlowContext = {
   page: Page;
-  annotate: (annotations: Annotation[]) => Promise<void>;
+  annotate: (annotations: Annotation[], options?: AnnotateOptions) => Promise<void>;
   clearAnnotations: () => Promise<void>;
   shot: (id: string, options?: ShotOptions) => Promise<void>;
   step: <T>(name: string, fn: () => Promise<T>) => Promise<T>;

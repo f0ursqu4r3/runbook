@@ -4,11 +4,13 @@ import type { Tone, ToneTheme } from "./annotate-themes.js";
 export type OverlayPayload = {
   items: Annotation[];
   tones: Record<Tone, ToneTheme>;
+  dim: boolean;
+  dimOpacity: number;
 };
 
 export function overlayScript(payload: OverlayPayload): void {
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const { items, tones } = payload;
+  const { items, tones, dim, dimOpacity } = payload;
 
   const overlay = document.createElement("div");
   overlay.id = "__runbook_overlay__";
@@ -242,6 +244,41 @@ export function overlayScript(payload: OverlayPayload): void {
     overlay.append(glow);
   }
 
+  function renderImplicitHighlight(rect: Rect, theme: ToneTheme, color: string): void {
+    const edgeTolerance = 2;
+    const touchesEdge =
+      rect.left <= edgeTolerance ||
+      rect.top <= edgeTolerance ||
+      rect.right >= window.innerWidth - edgeTolerance ||
+      rect.bottom >= window.innerHeight - edgeTolerance;
+
+    const ring = document.createElement("div");
+    if (touchesEdge) {
+      Object.assign(ring.style, {
+        position: "absolute",
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        borderRadius: "12px",
+        boxShadow: `inset 0 0 0 2px ${color}, inset 0 0 18px 2px ${theme.glow}`,
+        pointerEvents: "none"
+      });
+    } else {
+      Object.assign(ring.style, {
+        position: "absolute",
+        left: `${rect.left - 4}px`,
+        top: `${rect.top - 4}px`,
+        width: `${rect.width + 8}px`,
+        height: `${rect.height + 8}px`,
+        borderRadius: "12px",
+        boxShadow: `0 0 0 2px ${color}, 0 0 24px 4px ${theme.glow}`,
+        pointerEvents: "none"
+      });
+    }
+    overlay.append(ring);
+  }
+
   function renderBox(rect: Rect, color: string): void {
     const box = document.createElement("div");
     Object.assign(box.style, {
@@ -296,12 +333,19 @@ export function overlayScript(payload: OverlayPayload): void {
     overlay.append(badge);
   }
 
-  for (const item of items) {
+  const dimTargets: Rect[] = [];
+
+  type Resolved = { item: Annotation; rect: Rect; tone: Tone; theme: ToneTheme; color: string };
+  const resolved: Resolved[] = items.map((item) => {
     const rect = resolveRect(item);
+    if (item.type !== "redact") dimTargets.push(rect);
     const tone: Tone = item.tone ?? "accent";
     const theme = tones[tone];
     const color = item.color ?? theme.line;
+    return { item, rect, tone, theme, color };
+  });
 
+  for (const { item, rect, theme, color } of resolved) {
     switch (item.type) {
       case "focus":
         renderFocus(rect, theme);
@@ -312,6 +356,15 @@ export function overlayScript(payload: OverlayPayload): void {
       case "redact":
         renderRedact(rect);
         break;
+      case "label":
+      case "arrow":
+        if (item.highlight !== false) renderImplicitHighlight(rect, theme, color);
+        break;
+    }
+  }
+
+  for (const { item, rect, tone, theme, color } of resolved) {
+    switch (item.type) {
       case "step":
         renderStep(rect, theme, item.number ?? 1);
         break;
@@ -347,5 +400,62 @@ export function overlayScript(payload: OverlayPayload): void {
   }
 
   overlay.append(svg);
+
+  if (dim && dimTargets.length > 0) {
+    const dimLayer = document.createElementNS(SVG_NS, "svg");
+    dimLayer.setAttribute("data-runbook-dim", "true");
+    dimLayer.setAttribute("width", String(window.innerWidth));
+    dimLayer.setAttribute("height", String(window.innerHeight));
+    dimLayer.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    Object.assign(dimLayer.style, {
+      position: "absolute",
+      inset: "0",
+      pointerEvents: "none"
+    });
+
+    const dimDefs = document.createElementNS(SVG_NS, "defs");
+    const mask = document.createElementNS(SVG_NS, "mask");
+    const maskId = `runbook-dim-mask-${Date.now()}`;
+    mask.setAttribute("id", maskId);
+    const baseRect = document.createElementNS(SVG_NS, "rect");
+    baseRect.setAttribute("width", "100%");
+    baseRect.setAttribute("height", "100%");
+    baseRect.setAttribute("fill", "white");
+    mask.append(baseRect);
+
+    const cutoutPadding = 6;
+    const cutoutRadius = 12;
+    const edgeTolerance = 2;
+    for (const target of dimTargets) {
+      const expandLeft = target.left <= edgeTolerance ? cutoutRadius : 0;
+      const expandTop = target.top <= edgeTolerance ? cutoutRadius : 0;
+      const expandRight = target.right >= window.innerWidth - edgeTolerance ? cutoutRadius : 0;
+      const expandBottom = target.bottom >= window.innerHeight - edgeTolerance ? cutoutRadius : 0;
+
+      const cutout = document.createElementNS(SVG_NS, "rect");
+      cutout.setAttribute("x", String(target.left - cutoutPadding - expandLeft));
+      cutout.setAttribute("y", String(target.top - cutoutPadding - expandTop));
+      cutout.setAttribute("width", String(target.width + cutoutPadding * 2 + expandLeft + expandRight));
+      cutout.setAttribute("height", String(target.height + cutoutPadding * 2 + expandTop + expandBottom));
+      cutout.setAttribute("rx", String(cutoutRadius));
+      cutout.setAttribute("ry", String(cutoutRadius));
+      cutout.setAttribute("fill", "black");
+      mask.append(cutout);
+    }
+
+    dimDefs.append(mask);
+    dimLayer.append(dimDefs);
+
+    const scrim = document.createElementNS(SVG_NS, "rect");
+    scrim.setAttribute("width", "100%");
+    scrim.setAttribute("height", "100%");
+    scrim.setAttribute("fill", "rgba(8, 12, 24, 1)");
+    scrim.setAttribute("fill-opacity", String(dimOpacity));
+    scrim.setAttribute("mask", `url(#${maskId})`);
+    dimLayer.append(scrim);
+
+    overlay.insertBefore(dimLayer, overlay.firstChild);
+  }
+
   document.body.append(overlay);
 }

@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 
-import type { Annotation } from "../shared/types.js";
+import type { Annotation, AnnotateOptions } from "../shared/types.js";
 import { TONES } from "./annotate-themes.js";
 import { overlayScript } from "./overlay-script.js";
 
@@ -10,7 +10,16 @@ export async function clearAnnotations(page: Page): Promise<void> {
   });
 }
 
-export async function applyAnnotations(page: Page, annotations: Annotation[]): Promise<void> {
+export async function applyAnnotations(
+  page: Page,
+  annotations: Annotation[],
+  options: AnnotateOptions = {}
+): Promise<void> {
   await clearAnnotations(page);
-  await page.evaluate(overlayScript, { items: annotations, tones: TONES });
+  await page.evaluate(overlayScript, {
+    items: annotations,
+    tones: TONES,
+    dim: options.dim ?? false,
+    dimOpacity: options.dimOpacity ?? 0.55
+  });
 }

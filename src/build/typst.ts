@@ -120,8 +120,9 @@ export async function renderTypstSource(
   manifest: CaptureManifest
 ): Promise<string> {
   const templateSource = await readText(config.paths.templateFile);
+  const logoSource = config.paths.logoFile ?? path.join(config.paths.assetsDir, "logo.svg");
   const logoPath = path
-    .relative(path.dirname(config.paths.typstSourceFile), path.join(config.paths.assetsDir, "logo.svg"))
+    .relative(path.dirname(config.paths.typstSourceFile), logoSource)
     .split(path.sep)
     .join("/");
 
