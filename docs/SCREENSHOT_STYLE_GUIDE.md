@@ -50,6 +50,9 @@ Avoid grouping unrelated regions just to reduce annotation count.
 - Avoid covering buttons, field values, or table cells unless redacting.
 - Prefer side placement over top placement when the screenshot already has a strong header.
 - Avoid large framing boxes unless the entire region is the point.
+- Prefer clipped-region captures over full-page screenshots when the lesson lives inside one panel.
+- Clip to the smallest region that preserves context around the target action.
+- Use directional padding when a margin note needs extra room on one side of the frame.
 
 ## Editorial Quality Bar
 

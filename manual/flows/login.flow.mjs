@@ -6,13 +6,20 @@ export default defineFlow({
   screenshots: ["login-screen"]
 }, async (flow) => {
   await flow.render(loginScreenHtml(), "Render login screen");
-  await flow.capture("login-screen", (ui) => [
-    ui.step("[data-testid='email']", 1, { tone: "info" }),
-    ui.callout("[data-testid='submit']", {
-      title: "Sign In",
-      text: "Use the seeded account to enter the workspace.",
-      side: "bottom",
-      tone: "neutral"
-    })
-  ]);
+  await flow.capture(
+    "login-screen",
+    (ui) => [
+      ui.step("[data-testid='email']", 1, { tone: "info" }),
+      ui.callout("[data-testid='submit']", {
+        title: "Sign In",
+        text: "Use the seeded account to enter the workspace.",
+        side: "bottom",
+        tone: "neutral"
+      })
+    ],
+    {
+      clipTo: "[data-testid='login-card']",
+      padding: { top: 28, right: 28, bottom: 120, left: 28 }
+    }
+  );
 });

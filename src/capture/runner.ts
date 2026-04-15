@@ -6,7 +6,13 @@ import { chromium } from "playwright";
 import { applyAnnotations, clearAnnotations } from "./annotate.js";
 import { resetDir, writeText, listFiles } from "../shared/fs.js";
 import { RunbookError } from "../shared/errors.js";
-import type { CaptureManifest, FlowContext, FlowFile, RunbookConfig } from "../shared/types.js";
+import type {
+  CaptureManifest,
+  FlowContext,
+  FlowFile,
+  RunbookConfig,
+  ShotOptions
+} from "../shared/types.js";
 
 type FlowModule = {
   meta?: {
@@ -100,9 +106,11 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
           }
 
           const screenshotPath = path.join(config.paths.screenshotsDir, `${id}.png`);
+          const clip = await resolveClip(page, options);
           await page.screenshot({
             path: screenshotPath,
-            fullPage: options.fullPage ?? true,
+            fullPage: clip ? false : options.fullPage ?? true,
+            clip: clip ?? undefined,
             animations: "disabled"
           });
 
@@ -186,4 +194,65 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
     await context.close();
     await browser.close();
   }
+}
+
+async function resolveClip(
+  page: FlowContext["page"],
+  options: ShotOptions
+): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  if (!options.clipTo) {
+    return null;
+  }
+
+  const selectors = Array.isArray(options.clipTo) ? options.clipTo : [options.clipTo];
+  const padding =
+    typeof options.padding === "number" || options.padding === undefined
+      ? {
+          top: options.padding ?? 24,
+          right: options.padding ?? 24,
+          bottom: options.padding ?? 24,
+          left: options.padding ?? 24
+        }
+      : {
+          top: options.padding.top ?? 24,
+          right: options.padding.right ?? 24,
+          bottom: options.padding.bottom ?? 24,
+          left: options.padding.left ?? 24
+        };
+
+  const rect = await page.evaluate(
+    ({ selectors, padding: pad }) => {
+      const elements = selectors.map((selector) => document.querySelector(selector));
+      if (elements.some((element) => !(element instanceof HTMLElement))) {
+        const missing = selectors.find((selector, index) => !(elements[index] instanceof HTMLElement));
+        throw new Error(`Clip target not found: ${missing}`);
+      }
+
+      const rects = elements.map((element) => (element as HTMLElement).getBoundingClientRect());
+      const left = Math.max(0, Math.min(...rects.map((item) => item.left)) - pad.left);
+      const top = Math.max(0, Math.min(...rects.map((item) => item.top)) - pad.top);
+      const right = Math.min(
+        window.innerWidth,
+        Math.max(...rects.map((item) => item.right)) + pad.right
+      );
+      const bottom = Math.min(
+        window.innerHeight,
+        Math.max(...rects.map((item) => item.bottom)) + pad.bottom
+      );
+
+      return {
+        x: Math.floor(left),
+        y: Math.floor(top),
+        width: Math.ceil(right - left),
+        height: Math.ceil(bottom - top)
+      };
+    },
+    { selectors, padding }
+  );
+
+  if (rect.width <= 0 || rect.height <= 0) {
+    throw new RunbookError(`Clip region for ${selectors.join(", ")} is invalid`);
+  }
+
+  return rect;
 }
