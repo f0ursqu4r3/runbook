@@ -7,20 +7,18 @@ export default defineFlow({
 }, async (flow) => {
   await flow.render(manageUsersHtml(), "Render user management");
   await flow.capture("manage-users", (ui) => [
-    ui.focus("[data-testid='users-table']", { tone: "neutral" }),
-    ui.box("[data-testid='users-table']", { tone: "neutral" }),
     ui.redact("[data-testid='user-email']"),
     ui.callout("[data-testid='user-email']", {
       title: "Redacted",
-      text: "Dynamic or sensitive values should be masked before publication.",
-      side: "bottom",
+      text: "Sensitive values should be masked before publication.",
+      side: "left",
       tone: "danger"
     }),
-    ui.arrow("[data-testid='invite-user']", {
+    ui.callout("[data-testid='invite-user']", {
       title: "Invite Admin",
-      text: "Administrative access controls who can publish release-ready manuals.",
+      text: "Only administrators should publish release-ready manuals.",
       side: "left",
-      tone: "accent"
+      tone: "neutral"
     })
   ]);
 });

@@ -43,6 +43,7 @@ export type ScreenshotReference = {
 export type Annotation = {
   type: "arrow" | "box" | "step" | "label" | "redact" | "focus";
   target: string;
+  targets?: string[];
   title?: string;
   label?: string;
   text?: string;

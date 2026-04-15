@@ -15,27 +15,27 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
     const tones = {
       accent: {
         line: "#f59e0b",
-        glow: "rgba(245, 158, 11, 0.28)",
-        panel: "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(30,41,59,0.94))",
-        chip: "linear-gradient(135deg, #f59e0b, #fb7185)"
+        glow: "rgba(245, 158, 11, 0.12)",
+        panel: "rgba(15,23,42,0.92)",
+        chip: "#f59e0b"
       },
       info: {
         line: "#38bdf8",
-        glow: "rgba(56, 189, 248, 0.24)",
-        panel: "linear-gradient(180deg, rgba(8,47,73,0.94), rgba(15,23,42,0.96))",
-        chip: "linear-gradient(135deg, #38bdf8, #818cf8)"
+        glow: "rgba(56, 189, 248, 0.1)",
+        panel: "rgba(15,23,42,0.92)",
+        chip: "#38bdf8"
       },
       neutral: {
         line: "#94a3b8",
-        glow: "rgba(148, 163, 184, 0.24)",
-        panel: "linear-gradient(180deg, rgba(15,23,42,0.94), rgba(30,41,59,0.94))",
-        chip: "linear-gradient(135deg, #94a3b8, #cbd5e1)"
+        glow: "rgba(148, 163, 184, 0.1)",
+        panel: "rgba(15,23,42,0.9)",
+        chip: "#64748b"
       },
       danger: {
         line: "#fb7185",
-        glow: "rgba(251, 113, 133, 0.24)",
-        panel: "linear-gradient(180deg, rgba(76,5,25,0.94), rgba(15,23,42,0.96))",
-        chip: "linear-gradient(135deg, #fb7185, #f43f5e)"
+        glow: "rgba(251, 113, 133, 0.1)",
+        panel: "rgba(76,5,25,0.9)",
+        chip: "#fb7185"
       }
     } as const;
 
@@ -50,15 +50,6 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
       fontFamily:
         'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
     });
-
-    const wash = document.createElement("div");
-    Object.assign(wash.style, {
-      position: "absolute",
-      inset: "0",
-      background:
-        "radial-gradient(circle at top left, rgba(255,255,255,0.14), transparent 26%), linear-gradient(180deg, rgba(15,23,42,0.03), rgba(15,23,42,0.08))"
-    });
-    overlay.append(wash);
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", String(window.innerWidth));
@@ -78,7 +69,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
     filter.setAttribute("width", "200%");
     filter.setAttribute("height", "200%");
     const blur = document.createElementNS("http://www.w3.org/2000/svg", "feGaussianBlur");
-    blur.setAttribute("stdDeviation", "6");
+    blur.setAttribute("stdDeviation", "3");
     filter.append(blur);
     defs.append(filter);
     const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
@@ -109,14 +100,14 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
         position: "absolute",
         left: `${x}px`,
         top: `${y}px`,
-        maxWidth: "240px",
-        padding: "12px 14px 13px",
-        borderRadius: "18px",
+        maxWidth: "220px",
+        padding: "10px 12px 11px",
+        borderRadius: "16px",
         background: theme.panel,
-        border: "1px solid rgba(255,255,255,0.16)",
+        border: "1px solid rgba(255,255,255,0.1)",
         color: "#fff",
-        boxShadow: `0 20px 40px rgba(15, 23, 42, 0.24), 0 0 0 1px ${theme.glow}`,
-        backdropFilter: "blur(10px)"
+        boxShadow: "0 14px 28px rgba(15, 23, 42, 0.16)",
+        backdropFilter: "blur(8px)"
       });
 
       if (kicker) {
@@ -126,12 +117,12 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
           display: "inline-flex",
           alignItems: "center",
           marginBottom: "8px",
-          padding: "5px 8px",
+          padding: "4px 7px",
           borderRadius: "999px",
           background: theme.chip,
-          fontSize: "10px",
+          fontSize: "9px",
           fontWeight: "800",
-          letterSpacing: "0.08em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
           color: "#fff"
         });
@@ -142,7 +133,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
         const heading = document.createElement("div");
         heading.textContent = title;
         Object.assign(heading.style, {
-          fontSize: "13px",
+          fontSize: "12px",
           fontWeight: "800",
           letterSpacing: "-0.01em",
           lineHeight: "1.25"
@@ -155,9 +146,9 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
         body.textContent = text;
         Object.assign(body.style, {
           marginTop: title ? "4px" : "0",
-          fontSize: "12px",
-          lineHeight: "1.45",
-          color: "rgba(255,255,255,0.78)"
+          fontSize: "11px",
+          lineHeight: "1.4",
+          color: "rgba(255,255,255,0.76)"
         });
         panel.append(body);
       }
@@ -172,24 +163,101 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
     ) => {
       switch (side) {
         case "left":
-          return { x: rect.left - 180, y: rect.top + rect.height / 2 - 18 };
+          return { x: rect.left - 150, y: rect.top + rect.height / 2 - 26 };
         case "right":
-          return { x: rect.right + 16, y: rect.top + rect.height / 2 - 18 };
+          return { x: rect.right + 16, y: rect.top + rect.height / 2 - 26 };
         case "bottom":
-          return { x: rect.left, y: rect.bottom + 16 };
+          return { x: rect.left + rect.width / 2 - 86, y: rect.bottom + 16 };
         case "top":
         default:
-          return { x: rect.left, y: rect.top - 48 };
+          return { x: rect.left + rect.width / 2 - 86, y: rect.top - 76 };
       }
     };
 
-    for (const item of items) {
-      const target = document.querySelector(item.target);
-      if (!(target instanceof HTMLElement)) {
-        throw new Error(`Annotation target not found: ${item.target}`);
+    const maybeDrawRail = (
+      panelRect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
+      rect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
+      side: "top" | "right" | "bottom" | "left",
+      color: string
+    ) => {
+      const x1 =
+        side === "left"
+          ? panelRect.right + 6
+          : side === "right"
+            ? panelRect.left - 6
+            : panelRect.left + panelRect.width / 2;
+      const y1 =
+        side === "top"
+          ? panelRect.bottom + 6
+          : side === "bottom"
+            ? panelRect.top - 6
+            : panelRect.top + panelRect.height / 2;
+      const x2 =
+        side === "left"
+          ? rect.left - 6
+          : side === "right"
+            ? rect.right + 6
+            : rect.left + rect.width / 2;
+      const y2 =
+        side === "top"
+          ? rect.top - 6
+          : side === "bottom"
+            ? rect.bottom + 6
+            : rect.top + rect.height / 2;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const distance = Math.hypot(dx, dy);
+      if (distance > 120) {
+        return;
       }
 
-      const rect = target.getBoundingClientRect();
+      const rail = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      rail.setAttribute("x1", String(x1));
+      rail.setAttribute("y1", String(y1));
+      rail.setAttribute("x2", String(x2));
+      rail.setAttribute("y2", String(y2));
+      rail.setAttribute("stroke", color);
+      rail.setAttribute("stroke-width", "1.5");
+      rail.setAttribute("stroke-linecap", "round");
+      rail.setAttribute("stroke-opacity", "0.5");
+      svg.append(rail);
+
+      const tick = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      tick.setAttribute("cx", String(x2));
+      tick.setAttribute("cy", String(y2));
+      tick.setAttribute("r", "3");
+      tick.setAttribute("fill", color);
+      svg.append(tick);
+    };
+
+    const resolveRect = (item: Annotation) => {
+      const selectors = item.targets?.length ? item.targets : [item.target];
+      const elements = selectors.map((selector) => document.querySelector(selector));
+
+      if (elements.some((element) => !(element instanceof HTMLElement))) {
+        const missing = selectors.find((selector, index) => !(elements[index] instanceof HTMLElement));
+        throw new Error(`Annotation target not found: ${missing}`);
+      }
+
+      const rects = elements.map((element) => (element as HTMLElement).getBoundingClientRect());
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const top = Math.min(...rects.map((rect) => rect.top));
+      const right = Math.max(...rects.map((rect) => rect.right));
+      const bottom = Math.max(...rects.map((rect) => rect.bottom));
+
+      return {
+        left,
+        top,
+        right,
+        bottom,
+        width: right - left,
+        height: bottom - top
+      };
+    };
+
+    for (const item of items) {
+      const rect = resolveRect(item);
       const tone = item.tone ?? "accent";
       const theme = tones[tone];
       const color = item.color ?? theme.line;
@@ -198,43 +266,30 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
         const glow = document.createElement("div");
         Object.assign(glow.style, {
           position: "absolute",
-          left: `${rect.left - 16}px`,
-          top: `${rect.top - 16}px`,
-          width: `${rect.width + 32}px`,
-          height: `${rect.height + 32}px`,
-          borderRadius: "24px",
+          left: `${rect.left - 10}px`,
+          top: `${rect.top - 10}px`,
+          width: `${rect.width + 20}px`,
+          height: `${rect.height + 20}px`,
+          borderRadius: "20px",
           background: `radial-gradient(circle, ${theme.glow} 0%, rgba(255,255,255,0) 72%)`,
-          filter: "blur(10px)"
+          filter: "blur(8px)"
         });
         overlay.append(glow);
         continue;
       }
 
       if (item.type === "box") {
-        const glow = document.createElement("div");
-        Object.assign(glow.style, {
-          position: "absolute",
-          left: `${rect.left - 16}px`,
-          top: `${rect.top - 16}px`,
-          width: `${rect.width + 32}px`,
-          height: `${rect.height + 32}px`,
-          borderRadius: "24px",
-          background: `radial-gradient(circle, ${theme.glow} 0%, rgba(255,255,255,0) 72%)`,
-          filter: "blur(12px)"
-        });
-        overlay.append(glow);
-
         const box = document.createElement("div");
         Object.assign(box.style, {
           position: "absolute",
-          left: `${rect.left - 8}px`,
-          top: `${rect.top - 8}px`,
-          width: `${rect.width + 16}px`,
-          height: `${rect.height + 16}px`,
+          left: `${rect.left - 6}px`,
+          top: `${rect.top - 6}px`,
+          width: `${rect.width + 12}px`,
+          height: `${rect.height + 12}px`,
           border: `2px solid ${color}`,
-          borderRadius: "18px",
-          background: "rgba(255,255,255,0.08)",
-          boxShadow: `0 0 0 1px rgba(255,255,255,0.28) inset, 0 18px 40px ${theme.glow}`
+          borderRadius: "16px",
+          background: "rgba(255,255,255,0.03)",
+          boxShadow: "0 1px 0 rgba(255,255,255,0.4) inset"
         });
         overlay.append(box);
         continue;
@@ -274,7 +329,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
           fontSize: "15px",
           fontWeight: "700",
           border: "2px solid rgba(255,255,255,0.92)",
-          boxShadow: `0 16px 28px ${theme.glow}`
+          boxShadow: "0 8px 18px rgba(15, 23, 42, 0.16)"
         });
         overlay.append(badge);
         continue;
@@ -282,7 +337,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
 
       if (item.type === "label") {
         const position = positionForSide(rect, item.side ?? "top");
-        makePanel(
+        const panel = makePanel(
           tone,
           position.x,
           position.y,
@@ -290,6 +345,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
           item.text,
           item.title ? "Note" : undefined
         );
+        maybeDrawRail(panel.getBoundingClientRect(), rect, item.side ?? "top", color);
         continue;
       }
 
@@ -304,47 +360,7 @@ export async function applyAnnotations(page: Page, annotations: Annotation[]): P
           item.text,
           "Action"
         );
-
-        const panelRect = panel.getBoundingClientRect();
-        let x1 = panelRect.left + panelRect.width / 2;
-        let y1 = panelRect.top + panelRect.height / 2;
-        const x2 = rect.left + rect.width / 2;
-        const y2 = rect.top + rect.height / 2;
-
-        if (side === "left") {
-          x1 = panelRect.right;
-          y1 = panelRect.top + panelRect.height / 2;
-        } else if (side === "right") {
-          x1 = panelRect.left;
-          y1 = panelRect.top + panelRect.height / 2;
-        } else if (side === "top") {
-          x1 = panelRect.left + panelRect.width / 2;
-          y1 = panelRect.bottom;
-        } else {
-          x1 = panelRect.left + panelRect.width / 2;
-          y1 = panelRect.top;
-        }
-
-        const cx = side === "left" || side === "right" ? (x1 + x2) / 2 : x1;
-        const cy = side === "top" || side === "bottom" ? (y1 + y2) / 2 : y1;
-
-        const glowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        glowPath.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-        glowPath.setAttribute("fill", "none");
-        glowPath.setAttribute("stroke", theme.glow);
-        glowPath.setAttribute("stroke-width", "10");
-        glowPath.setAttribute("stroke-linecap", "round");
-        glowPath.setAttribute("filter", "url(#runbook-soft-glow)");
-        svg.append(glowPath);
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", color);
-        path.setAttribute("stroke-width", "3.5");
-        path.setAttribute("stroke-linecap", "round");
-        path.setAttribute("marker-end", "url(#runbook-arrowhead)");
-        svg.append(path);
+        maybeDrawRail(panel.getBoundingClientRect(), rect, side, color);
       }
     }
 

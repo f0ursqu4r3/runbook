@@ -64,6 +64,10 @@ export default defineFlow(
 
 The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, and `ui.redact`. Those map to a more polished visual system with glow treatments, glass panels, curved connectors, and richer callout cards intended for modern release-quality documentation.
 
+Grouped multi-target annotations are supported by passing an array of selectors to `ui.box`, `ui.focus`, `ui.callout`, or `ui.arrow`.
+
+See [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md) for the annotation tone and composition rules used by the sample manual.
+
 ## Project Layout
 
 ```text

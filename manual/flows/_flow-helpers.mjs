@@ -1,19 +1,24 @@
 export function defineFlow(meta, run) {
+  const normalizeTarget = (targetOrTargets) =>
+    Array.isArray(targetOrTargets)
+      ? { target: targetOrTargets[0], targets: targetOrTargets }
+      : { target: targetOrTargets };
+
   const ui = {
-    focus(target, options = {}) {
-      return { type: "focus", target, ...options };
+    focus(targetOrTargets, options = {}) {
+      return { type: "focus", ...normalizeTarget(targetOrTargets), ...options };
     },
-    box(target, options = {}) {
-      return { type: "box", target, ...options };
+    box(targetOrTargets, options = {}) {
+      return { type: "box", ...normalizeTarget(targetOrTargets), ...options };
     },
     step(target, number, options = {}) {
       return { type: "step", target, number, ...options };
     },
-    callout(target, options = {}) {
-      return { type: "label", target, ...options };
+    callout(targetOrTargets, options = {}) {
+      return { type: "label", ...normalizeTarget(targetOrTargets), ...options };
     },
-    arrow(target, options = {}) {
-      return { type: "arrow", target, ...options };
+    arrow(targetOrTargets, options = {}) {
+      return { type: "arrow", ...normalizeTarget(targetOrTargets), ...options };
     },
     redact(target, options = {}) {
       return { type: "redact", target, ...options };
