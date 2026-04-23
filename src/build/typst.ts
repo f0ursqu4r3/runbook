@@ -9,6 +9,11 @@ import { matchScreenshot, createScreenshotPattern } from "../shared/screenshot-p
 
 const execFileAsync = promisify(execFile);
 
+type TypstProgressOptions = {
+  onChapterRendered?: (chapter: Chapter, completed: number, total: number) => void;
+  onStage?: (stage: "template" | "cover" | "write-source" | "compile-pdf") => void;
+};
+
 type MarkdownBlock =
   | { type: "heading"; level: number; text: string }
   | { type: "paragraph"; text: string }
@@ -203,8 +208,10 @@ function renderUnit(
 export async function renderTypstSource(
   config: RunbookConfig,
   chapters: Chapter[],
-  manifest: CaptureManifest
+  manifest: CaptureManifest,
+  options: TypstProgressOptions = {}
 ): Promise<string> {
+  options.onStage?.("template");
   const templateSource = await readText(config.paths.templateFile);
   const logoSource = config.paths.logoFile ?? path.join(config.paths.assetsDir, "logo.svg");
   const logoPath = path
@@ -213,15 +220,18 @@ export async function renderTypstSource(
     .join("/");
 
   const chapterMarkup = chapters
-    .map((chapter) => {
+    .map((chapter, index) => {
       const blocks = parseMarkdown(chapter.body);
       const units = createRenderUnits(blocks);
-      return units
+      const rendered = units
         .map((unit) => renderUnit(unit, manifest, config.paths.typstSourceFile))
         .join("\n\n");
+      options.onChapterRendered?.(chapter, index + 1, chapters.length);
+      return rendered;
     })
     .join("\n\n#pagebreak()\n\n");
 
+  options.onStage?.("cover");
   return [
     templateSource,
     "",
@@ -238,12 +248,15 @@ export async function renderTypstSource(
 export async function emitPdfArtifact(
   config: RunbookConfig,
   chapters: Chapter[],
-  manifest: CaptureManifest
+  manifest: CaptureManifest,
+  options: TypstProgressOptions = {}
 ): Promise<BuildSummary> {
-  const typstSource = await renderTypstSource(config, chapters, manifest);
+  const typstSource = await renderTypstSource(config, chapters, manifest, options);
+  options.onStage?.("write-source");
   await writeText(config.paths.typstSourceFile, typstSource);
 
   try {
+    options.onStage?.("compile-pdf");
     await execFileAsync("typst", [
       "compile",
       "--root",

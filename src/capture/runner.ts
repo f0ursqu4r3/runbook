@@ -30,6 +30,17 @@ type FlowModule = {
       };
 };
 
+type RunCaptureOptions = {
+  onFlowStart?: (flow: FlowFile, started: number, total: number) => void;
+  onScreenshotCaptured?: (
+    flow: FlowFile,
+    screenshotId: string,
+    completed: number,
+    total: number
+  ) => void;
+  onFlowComplete?: (flow: FlowFile, completed: number, total: number) => void;
+};
+
 async function loadFlow(flowPath: string): Promise<FlowFile> {
   const module = (await import(pathToFileURL(path.resolve(flowPath)).href)) as FlowModule;
   const exportedFlow =
@@ -71,7 +82,8 @@ async function runFlow(
   flow: FlowFile,
   config: RunbookConfig,
   browserContext: import("playwright").BrowserContext,
-  entries: CaptureManifest["entries"]
+  entries: CaptureManifest["entries"],
+  onScreenshotCaptured?: (flow: FlowFile, screenshotId: string) => void
 ): Promise<void> {
   const page = await browserContext.newPage();
   await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
@@ -111,6 +123,7 @@ async function runFlow(
           path: screenshotPath,
           step: currentStep
         });
+        onScreenshotCaptured?.(flow, id);
       }),
     step: async (name, fn) => {
       currentStep = name;
@@ -195,7 +208,11 @@ async function runWithConcurrency<T>(
   if (firstError !== null) throw firstError;
 }
 
-export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Promise<CaptureManifest> {
+export async function runCapture(
+  config: RunbookConfig,
+  flows: FlowFile[],
+  options: RunCaptureOptions = {}
+): Promise<CaptureManifest> {
   await resetDir(config.paths.screenshotsDir);
   await resetDir(config.paths.reportsDir);
 
@@ -217,9 +234,22 @@ export async function runCapture(config: RunbookConfig, flows: FlowFile[]): Prom
   });
 
   const concurrency = Math.max(1, config.captureConcurrency ?? 4);
+  let completedFlows = 0;
+  let startedFlows = 0;
+  let completedScreenshots = 0;
+  const totalScreenshots = flows.reduce((count, flow) => count + flow.screenshots.length, 0);
 
   try {
-    await runWithConcurrency(flows, concurrency, (flow) => runFlow(flow, config, context, entries));
+    await runWithConcurrency(flows, concurrency, async (flow) => {
+      startedFlows += 1;
+      options.onFlowStart?.(flow, startedFlows, flows.length);
+      await runFlow(flow, config, context, entries, (_flow, screenshotId) => {
+        completedScreenshots += 1;
+        options.onScreenshotCaptured?.(flow, screenshotId, completedScreenshots, totalScreenshots);
+      });
+      completedFlows += 1;
+      options.onFlowComplete?.(flow, completedFlows, flows.length);
+    });
 
     const manifest: CaptureManifest = {
       generatedAt: new Date().toISOString(),

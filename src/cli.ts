@@ -8,7 +8,28 @@ import { runCheck } from "./commands/check.js";
 import { runDev } from "./commands/dev.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runInit } from "./commands/init.js";
-import { ValidationError } from "./shared/errors.js";
+import { CommandResultError, ValidationError } from "./shared/errors.js";
+import { setLogMode, setProgressEnabled } from "./shared/logging.js";
+
+type JsonSuccess = {
+  ok: true;
+  command: string;
+  result: unknown;
+};
+
+type JsonFailure = {
+  ok: false;
+  command?: string;
+  error: {
+    name: string;
+    message: string;
+    details?: unknown;
+  };
+};
+
+function printJson(payload: JsonSuccess | JsonFailure): void {
+  console.log(JSON.stringify(payload, null, 2));
+}
 
 function printUsage(): void {
   console.log(`Runbook
@@ -29,6 +50,8 @@ Commands:
 Flags:
   --config  Path to a manual config file. Default: manual/manual.config.mjs
   --force   Allow init to write into a non-empty target directory
+  --json    Emit machine-readable JSON and suppress log chatter
+  --no-progress  Disable progress bars
   -h, --help  Show usage
 
 Suggested flow:
@@ -39,37 +62,88 @@ Suggested flow:
 }
 
 async function main(): Promise<void> {
-  const { command, configPath, targetPath, force } = parseArgs(process.argv);
+  const { command, configPath, targetPath, force, json, noProgress } = parseArgs(process.argv);
+
+  if (json) {
+    setLogMode("silent");
+  }
+  setProgressEnabled(!json && !noProgress);
+
+  let result: unknown;
 
   switch (command) {
     case "help":
+      if (json) {
+        printJson({
+          ok: true,
+          command,
+          result: {
+            commands: ["build", "capture", "check", "doctor", "init", "dev", "help"],
+            defaultConfigPath: "manual/manual.config.mjs"
+          }
+        });
+        return;
+      }
       printUsage();
       return;
     case "build":
-      await runBuild(configPath);
-      return;
+      result = await runBuild(configPath);
+      break;
     case "capture":
-      await runCaptureCommand(configPath);
-      return;
+      result = await runCaptureCommand(configPath);
+      break;
     case "check":
-      await runCheck(configPath);
-      return;
+      result = await runCheck(configPath);
+      break;
     case "dev":
-      await runDev(configPath);
-      return;
+      result = await runDev(configPath);
+      break;
     case "doctor":
-      await runDoctor(configPath);
-      return;
+      result = await runDoctor(configPath);
+      break;
     case "init":
-      await runInit({ targetDir: targetPath, force });
-      return;
+      result = await runInit({ targetDir: targetPath, force });
+      break;
     default:
       printUsage();
       return;
   }
+
+  if (json) {
+    printJson({ ok: true, command, result });
+  }
 }
 
 main().catch((error: unknown) => {
+  const wantsJson = process.argv.includes("--json");
+  const parsedCommand = process.argv[2];
+
+  if (wantsJson) {
+    setLogMode("silent");
+    if (error instanceof Error) {
+      printJson({
+        ok: false,
+        command: parsedCommand,
+        error: {
+          name: error.name,
+          message: error.message,
+          details: error instanceof CommandResultError ? error.details : undefined
+        }
+      });
+    } else {
+      printJson({
+        ok: false,
+        command: parsedCommand,
+        error: {
+          name: "Error",
+          message: "Unknown failure"
+        }
+      });
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   if (error instanceof Error) {
     log.error(error.message);
     if (error instanceof ValidationError) {

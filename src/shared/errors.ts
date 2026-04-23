@@ -5,6 +5,16 @@ export class RunbookError extends Error {
   }
 }
 
+export class CommandResultError extends RunbookError {
+  readonly details: unknown;
+
+  constructor(message: string, details: unknown) {
+    super(message);
+    this.name = "CommandResultError";
+    this.details = details;
+  }
+}
+
 export class ValidationError extends RunbookError {
   constructor(message: string) {
     super(message);

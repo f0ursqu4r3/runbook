@@ -7,7 +7,9 @@ test("parseArgs defaults to build", () => {
     command: "build",
     configPath: undefined,
     targetPath: undefined,
-    force: false
+    force: false,
+    json: false,
+    noProgress: false
   });
 });
 
@@ -18,7 +20,9 @@ test("parseArgs supports doctor with config", () => {
     command: "doctor",
     configPath: "manual/alt.config.mjs",
     targetPath: undefined,
-    force: false
+    force: false,
+    json: false,
+    noProgress: false
   });
 });
 
@@ -27,7 +31,20 @@ test("parseArgs supports init target and force", () => {
     command: "init",
     configPath: undefined,
     targetPath: "manual/acme",
-    force: true
+    force: true,
+    json: false,
+    noProgress: false
+  });
+});
+
+test("parseArgs supports disabling progress", () => {
+  expect(parseArgs(["bun", "src/cli.ts", "build", "--no-progress"])).toEqual({
+    command: "build",
+    configPath: undefined,
+    targetPath: undefined,
+    force: false,
+    json: false,
+    noProgress: true
   });
 });
 
@@ -36,7 +53,9 @@ test("parseArgs maps help flags to help command", () => {
     command: "help",
     configPath: undefined,
     targetPath: undefined,
-    force: false
+    force: false,
+    json: false,
+    noProgress: false
   });
 });
 

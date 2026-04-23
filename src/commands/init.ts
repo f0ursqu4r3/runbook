@@ -3,11 +3,18 @@ import { readdir } from "node:fs/promises";
 
 import { ensureDir, writeText } from "../shared/fs.js";
 import { RunbookError } from "../shared/errors.js";
-import { log } from "../shared/logging.js";
+import { log, startProgress } from "../shared/logging.js";
 
 type InitOptions = {
   targetDir?: string;
   force?: boolean;
+};
+
+export type InitResult = {
+  targetDir: string;
+  configPath: string;
+  outputDir: string;
+  createdPaths: string[];
 };
 
 function toPosix(value: string): string {
@@ -294,7 +301,7 @@ function buildLogoSource(): string {
 `;
 }
 
-export async function runInit(options: InitOptions = {}): Promise<void> {
+export async function runInit(options: InitOptions = {}): Promise<InitResult> {
   const targetDir = options.targetDir ? path.normalize(options.targetDir) : "manual";
   const absoluteTargetDir = path.resolve(targetDir);
   const dirName = path.basename(absoluteTargetDir);
@@ -308,20 +315,48 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
       `Refusing to scaffold into non-empty directory: ${absoluteTargetDir}. Re-run with --force to overwrite starter files.`
     );
   }
+  const progress = startProgress("Init", 6, "Creating directories");
+  try {
+    await ensureDir(path.join(absoluteTargetDir, "chapters"));
+    await ensureDir(path.join(absoluteTargetDir, "flows"));
+    await ensureDir(path.join(absoluteTargetDir, "assets"));
+    await ensureDir(path.join(absoluteTargetDir, "template"));
 
-  await ensureDir(path.join(absoluteTargetDir, "chapters"));
-  await ensureDir(path.join(absoluteTargetDir, "flows"));
-  await ensureDir(path.join(absoluteTargetDir, "assets"));
-  await ensureDir(path.join(absoluteTargetDir, "template"));
+    const configPath = path.join(absoluteTargetDir, "manual.config.mjs");
+    const createdPaths = [
+      configPath,
+      path.join(absoluteTargetDir, "chapters", "01-introduction.md"),
+      path.join(absoluteTargetDir, "flows", "_flow-helpers.mjs"),
+      path.join(absoluteTargetDir, "flows", "welcome.flow.mjs"),
+      path.join(absoluteTargetDir, "template", "manual.typ"),
+      path.join(absoluteTargetDir, "assets", "logo.svg")
+    ];
 
-  await writeText(path.join(absoluteTargetDir, "manual.config.mjs"), buildConfigSource(targetDir, productName, title, outputDir));
-  await writeText(path.join(absoluteTargetDir, "chapters", "01-introduction.md"), buildChapterSource(productName));
-  await writeText(path.join(absoluteTargetDir, "flows", "_flow-helpers.mjs"), buildFlowHelperSource());
-  await writeText(path.join(absoluteTargetDir, "flows", "welcome.flow.mjs"), buildStarterFlowSource());
-  await writeText(path.join(absoluteTargetDir, "template", "manual.typ"), buildTemplateSource());
-  await writeText(path.join(absoluteTargetDir, "assets", "logo.svg"), buildLogoSource());
+    await writeText(configPath, buildConfigSource(targetDir, productName, title, outputDir));
+    progress.advance("Writing chapter");
+    await writeText(createdPaths[1], buildChapterSource(productName));
+    progress.advance("Writing flow helper");
+    await writeText(createdPaths[2], buildFlowHelperSource());
+    progress.advance("Writing starter flow");
+    await writeText(createdPaths[3], buildStarterFlowSource());
+    progress.advance("Writing template");
+    await writeText(createdPaths[4], buildTemplateSource());
+    progress.advance("Writing assets");
+    await writeText(createdPaths[5], buildLogoSource());
+    progress.finish("Complete");
 
-  log.info(`Scaffolded starter manual in ${absoluteTargetDir}`);
-  log.info(`Config: ${path.join(toPosix(targetDir), "manual.config.mjs")}`);
-  log.info(`Next: bun run runbook doctor --config ${path.join(toPosix(targetDir), "manual.config.mjs")}`);
+    log.info(`Scaffolded starter manual in ${absoluteTargetDir}`);
+    log.info(`Config: ${path.join(toPosix(targetDir), "manual.config.mjs")}`);
+    log.info(`Next: bun run runbook doctor --config ${path.join(toPosix(targetDir), "manual.config.mjs")}`);
+
+    return {
+      targetDir: absoluteTargetDir,
+      configPath,
+      outputDir,
+      createdPaths
+    };
+  } catch (error) {
+    progress.fail("Failed");
+    throw error;
+  }
 }

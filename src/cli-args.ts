@@ -7,6 +7,8 @@ export type ParsedArgs = {
   configPath?: string;
   targetPath?: string;
   force?: boolean;
+  json?: boolean;
+  noProgress?: boolean;
 };
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -15,12 +17,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
   let configPath: string | undefined;
   let targetPath: string | undefined;
   let force = false;
+  let json = false;
+  let noProgress = false;
 
   for (let index = 2; index < argv.length; index += 1) {
     const arg = argv[index];
 
     if (arg === "--help" || arg === "-h") {
-      return { command: "help", configPath, targetPath, force };
+      return { command: "help", configPath, targetPath, force, json, noProgress };
     }
 
     if (arg === "--config") {
@@ -35,6 +39,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
     if (arg === "--force") {
       force = true;
+      continue;
+    }
+
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+
+    if (arg === "--no-progress") {
+      noProgress = true;
       continue;
     }
 
@@ -60,5 +74,5 @@ export function parseArgs(argv: string[]): ParsedArgs {
     throw new RunbookError(`Unknown command: ${command}`);
   }
 
-  return { command, configPath, targetPath, force };
+  return { command, configPath, targetPath, force, json, noProgress };
 }

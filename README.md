@@ -3,6 +3,7 @@
 Runbook is a CLI-first system for executable product manuals. It turns authored Markdown, scripted UI flows, and branded Typst templates into a single build pipeline.
 
 The main operator guide is [docs/USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/USAGE.md).
+Agent-facing JSON CLI guidance lives in [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
 
 ## Current Status
 
@@ -52,6 +53,9 @@ bun run src/cli.ts build --config manual/sample/manual.config.mjs
 ```
 
 Use `bun run runbook --help` to see the full command summary and the recommended operator flow.
+Agents and automation should prefer `runbook ... --json` for a stable machine-readable interface.
+Pass `--no-progress` if you want plain log output without progress bars.
+Path fields in the config also support `{version}` interpolation, for example `outputFile: "manual/dist/sample-ui-manual-demo-{version}.pdf"`.
 
 To start a new profile outside the default `manual/` directory:
 

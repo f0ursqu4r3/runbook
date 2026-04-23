@@ -13,17 +13,23 @@ import {
 } from "../build/validate.js";
 import { loadConfig } from "../config.js";
 import { discoverFlows } from "../capture/runner.js";
-import { RunbookError, ValidationError } from "../shared/errors.js";
-import { log } from "../shared/logging.js";
+import { CommandResultError } from "../shared/errors.js";
+import { log, startProgress } from "../shared/logging.js";
 import type { Chapter, FlowFile, RunbookConfig } from "../shared/types.js";
 
 const execFileAsync = promisify(execFile);
 
-type DoctorCheck = {
+export type DoctorCheck = {
   label: string;
   ok: boolean;
   detail: string;
   fix?: string;
+};
+
+export type DoctorResult = {
+  configPath: string;
+  ok: boolean;
+  checks: DoctorCheck[];
 };
 
 async function checkExecutable(
@@ -88,11 +94,13 @@ function logCheck(check: DoctorCheck): void {
   }
 }
 
-export async function runDoctor(configPath?: string): Promise<void> {
+export async function runDoctor(configPath?: string): Promise<DoctorResult> {
   const checks: DoctorCheck[] = [];
+  const progress = startProgress("Doctor", 2, "Checking config path");
 
   const resolvedConfigPath = configPath ?? "manual/manual.config.mjs";
   checks.push(await checkPath("Config file", resolvedConfigPath, "Pass `--config <path>` or add the default config file."));
+  progress.advance("Validating config");
 
   let config: RunbookConfig;
   try {
@@ -115,11 +123,21 @@ export async function runDoctor(configPath?: string): Promise<void> {
     for (const check of checks) {
       logCheck(check);
     }
-    throw new ValidationError("Doctor found configuration issues");
+    progress.fail("Failed");
+    throw new CommandResultError("Doctor found configuration issues", {
+      configPath: resolvedConfigPath,
+      ok: false,
+      checks
+    } satisfies DoctorResult);
   }
+  progress.advance("Validated config");
+  const totalChecks = 11 + (config.paths.logoFile ? 1 : 0);
+  progress.setTotal(totalChecks, "Checking dependencies");
 
   checks.push(await checkExecutable("Typst", "typst", ["--version"], "Install Typst and ensure `typst --version` works."));
+  progress.advance("Checked Typst");
   checks.push(await checkPlaywrightBrowser());
+  progress.advance("Checked Playwright");
 
   const projectPaths = [
     ["Chapters directory", config.paths.chaptersDir],
@@ -130,10 +148,12 @@ export async function runDoctor(configPath?: string): Promise<void> {
 
   if (config.paths.logoFile) {
     checks.push(await checkPath("Logo file", config.paths.logoFile, "Update `paths.logoFile` or add the logo asset."));
+    progress.advance("Checked logo path");
   }
 
   for (const [label, targetPath] of projectPaths) {
     checks.push(await checkPath(label, targetPath));
+    progress.advance(`Checked ${label.toLowerCase()}`);
   }
 
   const pathStatus = new Map(checks.map((check) => [check.label, check.ok]));
@@ -149,6 +169,7 @@ export async function runDoctor(configPath?: string): Promise<void> {
         ok: true,
         detail: `${chapters.length} chapter${chapters.length === 1 ? "" : "s"} discovered`
       });
+      progress.advance(`Loaded ${chapters.length} chapters`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       checks.push({
@@ -157,6 +178,7 @@ export async function runDoctor(configPath?: string): Promise<void> {
         detail: message,
         fix: "Add at least one markdown chapter with a level-one heading."
       });
+      progress.advance("Chapter discovery failed");
     }
   }
 
@@ -169,6 +191,7 @@ export async function runDoctor(configPath?: string): Promise<void> {
         ok: true,
         detail: `${flows.length} flow${flows.length === 1 ? "" : "s"} discovered`
       });
+      progress.advance(`Loaded ${flows.length} flows`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       checks.push({
@@ -177,6 +200,7 @@ export async function runDoctor(configPath?: string): Promise<void> {
         detail: message,
         fix: "Add at least one valid `.flow.mjs` file with unique screenshot IDs."
       });
+      progress.advance("Flow discovery failed");
     }
   }
 
@@ -188,6 +212,7 @@ export async function runDoctor(configPath?: string): Promise<void> {
         ok: true,
         detail: `${chapters.reduce((count, chapter) => count + chapter.screenshotRefs.length, 0)} references resolved`
       });
+      progress.advance("Resolved screenshot references");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       checks.push({
@@ -196,7 +221,10 @@ export async function runDoctor(configPath?: string): Promise<void> {
         detail: message,
         fix: "Make sure every `![[screenshot:...]]` reference is declared by a flow."
       });
+      progress.advance("Screenshot reference check failed");
     }
+  } else {
+    progress.advance("Skipped screenshot reference check");
   }
 
   log.info(`Runbook doctor for ${path.resolve(resolvedConfigPath)}`);
@@ -206,10 +234,23 @@ export async function runDoctor(configPath?: string): Promise<void> {
 
   const failures = checks.filter((check) => !check.ok);
   if (failures.length > 0) {
-    throw new RunbookError(
-      `Doctor found ${failures.length} issue${failures.length === 1 ? "" : "s"}`
+    progress.fail("Failed");
+    throw new CommandResultError(
+      `Doctor found ${failures.length} issue${failures.length === 1 ? "" : "s"}`,
+      {
+        configPath: resolvedConfigPath,
+        ok: false,
+        checks
+      } satisfies DoctorResult
     );
   }
 
   log.info("Doctor complete: environment and manual profile look ready");
+  progress.finish("Complete");
+
+  return {
+    configPath: resolvedConfigPath,
+    ok: true,
+    checks
+  };
 }

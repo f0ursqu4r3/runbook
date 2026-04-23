@@ -2,6 +2,8 @@
 
 Runbook turns a manual into build output. You write chapters in Markdown, define screenshots in executable Playwright flows, and compile a PDF that fails when the documented product no longer matches reality.
 
+For machine-driven usage, see [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
+
 This guide is the end-to-end reference for using the tool as it exists in this repository today.
 
 ## What You Need
@@ -31,6 +33,8 @@ bun run build
 npm link
 runbook --help
 ```
+
+Add `--no-progress` to any command when you want to suppress progress bars and keep plain line-oriented output.
 
 ## Fast Start
 
@@ -139,6 +143,7 @@ Field notes:
 - `captureConcurrency` controls how many flows run in parallel.
 - `deviceScaleFactor` controls screenshot sharpness. The current default is `2`.
 - `paths.logoFile` is optional. If omitted, Runbook uses `assetsDir/logo.svg`.
+- Path fields support `{version}` interpolation. Example: `outputFile: "manual/dist/sample-ui-manual-demo-{version}.pdf"`.
 
 ## Writing Chapters
 
