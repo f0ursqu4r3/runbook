@@ -17,6 +17,21 @@ Install repository dependencies first:
 bun install
 ```
 
+If you are setting up a new profile or machine, start with:
+
+```bash
+bun run runbook:init
+bun run runbook:doctor
+```
+
+If you want `runbook` available as a shell command outside the repo:
+
+```bash
+bun run build
+npm link
+runbook --help
+```
+
 ## Fast Start
 
 Build the bundled sample manual:
@@ -42,9 +57,11 @@ The pipeline is simple:
 1. Chapters in `manual/chapters` define the written manual.
 2. Flows in `manual/flows` define how screenshots are captured.
 3. The config file defines paths, branding, viewport, and app base URL.
-4. `check` validates structure and screenshot references.
-5. `capture` runs the flows and emits screenshots plus a manifest.
-6. `build` runs capture, generates Typst, and compiles the final PDF.
+4. `init` can scaffold a starter profile when you do not want to build the directory tree by hand.
+5. `check` validates structure and screenshot references.
+6. `doctor` verifies the local environment, required files, and profile wiring before expensive work starts.
+7. `capture` runs the flows and emits screenshots plus a manifest.
+8. `build` runs capture, generates Typst, and compiles the final PDF.
 
 If a screenshot reference, selector, or flow breaks, the manual build breaks.
 

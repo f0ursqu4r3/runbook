@@ -22,6 +22,8 @@ This repository now includes:
 ```bash
 bun install
 bunx playwright install chromium
+bun run runbook:init
+bun run runbook:doctor
 bun run runbook:check
 bun run runbook:capture
 bun run runbook:build
@@ -32,9 +34,12 @@ For local PDF builds, `typst` must also be available on your `PATH`.
 ## Commands
 
 - `bun run runbook:check` validates project structure, chapters, and screenshot references.
+- `bun run runbook:doctor` runs a preflight check for config validity, required paths, Typst, and Playwright Chromium.
+- `bun run runbook:init [target-dir]` scaffolds a starter manual profile with a config, chapter, flow, template, and logo.
 - `bun run runbook:capture` runs the Playwright flows and emits real screenshot artifacts plus a manifest.
 - `bun run runbook:build` validates the manual, captures screenshots, generates Typst, and compiles the final PDF.
 - `bun run runbook:sample:check` validates the bundled sample manual profile.
+- `bun run runbook:sample:doctor` runs the same preflight checks for the Sample profile.
 - `bun run runbook:sample:capture` captures the sample screenshots into `dist/sample/`.
 - `bun run runbook:sample:build` builds the sample PDF into `dist/sample/manual.pdf`.
 - `bun run dev` runs the same build in a lightweight dev loop entrypoint.
@@ -44,6 +49,40 @@ You can also point the CLI at any compatible manual profile explicitly:
 
 ```bash
 bun run src/cli.ts build --config manual/sample/manual.config.mjs
+```
+
+Use `bun run runbook --help` to see the full command summary and the recommended operator flow.
+
+To start a new profile outside the default `manual/` directory:
+
+```bash
+bun run runbook:init manuals/acme
+bun run src/cli.ts doctor --config manuals/acme/manual.config.mjs
+```
+
+## Install As A CLI
+
+The repository can also be installed as a local system CLI command.
+
+Build and link it:
+
+```bash
+bun run build
+npm link
+```
+
+Or use the convenience script:
+
+```bash
+bun run runbook:link
+```
+
+After that, `runbook --help` should work from any shell session that can see your global npm bin directory.
+
+To remove the link later:
+
+```bash
+npm unlink -g runbook
 ```
 
 Runtime-loaded project files currently use `.mjs` so the scaffold works both through Bun in development and plain Node after TypeScript compilation.
