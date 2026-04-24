@@ -24,7 +24,7 @@ test("loadConfig expands {version} tokens in path fields", async () => {
   await writeFile(
     configPath,
     `export default {
-      productName: "Sample App",
+      productName: "Product UI",
       title: "Product Demo",
       version: "2.4.1-beta",
       baseUrl: "http://localhost:3000",
@@ -47,7 +47,7 @@ test("loadConfig expands {version} tokens in path fields", async () => {
         reportsDir: "manual/dist/reports",
         captureReportFile: "manual/dist/reports/capture-report.json",
         manifestFile: "manual/dist/screenshots/manifest.json",
-        outputFile: "manual/dist/sample-ui-manual-demo-{version}.pdf"
+        outputFile: "manual/dist/product-manual-demo-{version}.pdf"
       }
     };`,
     "utf8"
@@ -55,5 +55,5 @@ test("loadConfig expands {version} tokens in path fields", async () => {
 
   const config = await loadConfig(configPath);
 
-  expect(config.paths.outputFile).toBe("manual/dist/sample-ui-manual-demo-2.4.1-beta.pdf");
+  expect(config.paths.outputFile).toBe("manual/dist/product-manual-demo-2.4.1-beta.pdf");
 });

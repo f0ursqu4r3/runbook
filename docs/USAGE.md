@@ -143,7 +143,7 @@ Field notes:
 - `captureConcurrency` controls how many flows run in parallel.
 - `deviceScaleFactor` controls screenshot sharpness. The current default is `2`.
 - `paths.logoFile` is optional. If omitted, Runbook uses `assetsDir/logo.svg`.
-- Path fields support `{version}` interpolation. Example: `outputFile: "manual/dist/sample-ui-manual-demo-{version}.pdf"`.
+- Path fields support `{version}` interpolation. Example: `outputFile: "manual/dist/product-manual-demo-{version}.pdf"`.
 
 ## Writing Chapters
 
@@ -327,7 +327,7 @@ bun run src/cli.ts build
 To use a different manual profile:
 
 ```bash
-bun run src/cli.ts build --config manual/sample/manual.config.mjs
+bun run src/cli.ts build --config manuals/acme/manual.config.mjs
 ```
 
 Command behavior:

@@ -18,11 +18,7 @@
     "runbook:capture": "bun run src/cli.ts capture",
     "runbook:check": "bun run src/cli.ts check",
     "runbook:doctor": "bun run src/cli.ts doctor",
-    "runbook:init": "bun run src/cli.ts init",
-    "runbook:sample:build": "bun run src/cli.ts build --config manual/sample/manual.config.mjs",
-    "runbook:sample:capture": "bun run src/cli.ts capture --config manual/sample/manual.config.mjs",
-    "runbook:sample:check": "bun run src/cli.ts check --config manual/sample/manual.config.mjs",
-    "runbook:sample:doctor": "bun run src/cli.ts doctor --config manual/sample/manual.config.mjs"
+    "runbook:init": "bun run src/cli.ts init"
   },
   "files": [
     "dist",

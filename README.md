@@ -39,23 +39,19 @@ For local PDF builds, `typst` must also be available on your `PATH`.
 - `bun run runbook:init [target-dir]` scaffolds a starter manual profile with a config, chapter, flow, template, and logo.
 - `bun run runbook:capture` runs the Playwright flows and emits real screenshot artifacts plus a manifest.
 - `bun run runbook:build` validates the manual, captures screenshots, generates Typst, and compiles the final PDF.
-- `bun run runbook:sample:check` validates the bundled sample manual profile.
-- `bun run runbook:sample:doctor` runs the same preflight checks for the Sample profile.
-- `bun run runbook:sample:capture` captures the sample screenshots into `dist/sample/`.
-- `bun run runbook:sample:build` builds the sample PDF into `dist/sample/manual.pdf`.
 - `bun run dev` runs the same build in a lightweight dev loop entrypoint.
 - `bun test` runs repository tests, including the capture failure-path test that asserts report output.
 
 You can also point the CLI at any compatible manual profile explicitly:
 
 ```bash
-bun run src/cli.ts build --config manual/sample/manual.config.mjs
+bun run src/cli.ts build --config manuals/acme/manual.config.mjs
 ```
 
 Use `bun run runbook --help` to see the full command summary and the recommended operator flow.
 Agents and automation should prefer `runbook ... --json` for a stable machine-readable interface.
 Pass `--no-progress` if you want plain log output without progress bars.
-Path fields in the config also support `{version}` interpolation, for example `outputFile: "manual/dist/sample-ui-manual-demo-{version}.pdf"`.
+Path fields in the config also support `{version}` interpolation, for example `outputFile: "manual/dist/product-manual-demo-{version}.pdf"`.
 
 To start a new profile outside the default `manual/` directory:
 
@@ -121,26 +117,6 @@ The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, an
 Grouped multi-target annotations are supported by passing an array of selectors to `ui.box`, `ui.focus`, `ui.callout`, or `ui.arrow`.
 
 See [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md) for the annotation tone and composition rules used by the sample manual.
-
-## Sample Example
-
-This repository includes an example manual profile for the Sample App app under [manual/sample](/Users/la.kyle.dougan/git/eos/runbook/manual/sample).
-
-To build it against the real local app:
-
-```bash
-cd /Users/la.kyle.dougan/git/eos/sample-ui/fe
-VITE_E2E=true bun run dev -- --port 51173
-```
-
-In a second terminal:
-
-```bash
-cd /Users/la.kyle.dougan/git/eos/runbook
-bun run runbook:sample:build
-```
-
-The generated screenshots, manifest, report, Typst source, and PDF will be written to `dist/sample/`.
 
 ## Project Layout
 
