@@ -1,29 +1,30 @@
 # Runbook Usage Guide
 
-Runbook turns a manual into build output. You write chapters in Markdown, define screenshots in executable Playwright flows, and compile a PDF that fails when the documented product no longer matches reality.
+This guide explains how to use Runbook without assuming you already know how the project is put together.
 
-For machine-driven usage, see [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
+At a high level, Runbook takes three things:
 
-This guide is the end-to-end reference for using the tool as it exists in this repository today.
+- written content in Markdown
+- screenshot flows written in Playwright
+- a Typst template for the final layout
+
+It uses those inputs to build a manual. If a referenced screenshot no longer matches what the flows can capture, the build fails instead of quietly drifting out of date.
+
+If you are calling Runbook from another tool, see [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
 
 ## What You Need
 
-- `bun` 1.3+
+Before you do anything else, make sure you have:
+
+- `bun` 1.3 or newer
 - `typst` on your `PATH`
 - Playwright Chromium installed with `bunx playwright install chromium`
-- A local app or fixture environment that can be captured deterministically
+- an app or fixture environment that can be captured reliably
 
-Install repository dependencies first:
+Install dependencies first:
 
 ```bash
 bun install
-```
-
-If you are setting up a new profile or machine, start with:
-
-```bash
-bun run runbook:init
-bun run runbook:doctor
 ```
 
 If you want `runbook` available as a shell command outside the repo:
@@ -34,44 +35,135 @@ npm link
 runbook --help
 ```
 
-Add `--no-progress` to any command when you want to suppress progress bars and keep plain line-oriented output.
+If you do not want progress bars, add `--no-progress` to any command.
 
-## Fast Start
+## A Good Starting Point
 
-Build the bundled sample manual:
+If you are on a new machine or starting a fresh profile, this is the safest order:
 
 ```bash
+bun run runbook:init
+bun run runbook:doctor
 bun run runbook:check
 bun run runbook:capture
 bun run runbook:build
 ```
 
-That will produce:
+That sequence does three useful things:
+
+- `init` gives you a working starter profile
+- `doctor` catches environment problems early
+- `check` validates structure before you spend time on capture
+
+## What Each Command Does
+
+### `init`
+
+`init` creates a starter profile with the files Runbook expects:
+
+- a config file
+- a starter chapter
+- a starter flow
+- a Typst template
+- a logo
+
+Example:
+
+```bash
+bun run runbook:init manuals/acme
+```
+
+That creates a new profile under `manuals/acme`.
+
+### `doctor`
+
+`doctor` is the preflight check. It looks for common setup problems like:
+
+- a missing config file
+- missing directories or template files
+- Typst not being installed
+- Playwright Chromium not being installed
+- empty chapter or flow directories
+- broken screenshot references
+
+Use it before `capture` or `build` when something feels off.
+
+Example:
+
+```bash
+bun run runbook:doctor
+bun run src/cli.ts doctor --config manuals/acme/manual.config.mjs
+```
+
+### `check`
+
+`check` validates the manual structure without opening a browser or compiling a PDF.
+
+It makes sure:
+
+- chapters exist
+- flows exist
+- chapters begin with a level-one heading
+- screenshot IDs are unique
+- every screenshot reference in Markdown is declared by a flow
+
+Example:
+
+```bash
+bun run runbook:check
+```
+
+### `capture`
+
+`capture` runs the flows and writes the screenshot artifacts plus a manifest.
+
+Example:
+
+```bash
+bun run runbook:capture
+```
+
+After a successful run, you should see:
 
 - `dist/screenshots/*.png`
 - `dist/screenshots/manifest.json`
 - `dist/reports/capture-report.json`
+
+### `build`
+
+`build` runs the full pipeline:
+
+1. validate the project
+2. capture screenshots
+3. generate Typst source
+4. compile the final PDF
+
+Example:
+
+```bash
+bun run runbook:build
+```
+
+After a successful build, you should see:
+
 - `dist/manual.typ`
 - `dist/manual.pdf`
+- the screenshot and report files from capture
 
-## How Runbook Works
+## The Basic Mental Model
 
-The pipeline is simple:
+Runbook is easier to use once you think about it in these terms:
 
-1. Chapters in `manual/chapters` define the written manual.
-2. Flows in `manual/flows` define how screenshots are captured.
-3. The config file defines paths, branding, viewport, and app base URL.
-4. `init` can scaffold a starter profile when you do not want to build the directory tree by hand.
-5. `check` validates structure and screenshot references.
-6. `doctor` verifies the local environment, required files, and profile wiring before expensive work starts.
-7. `capture` runs the flows and emits screenshots plus a manifest.
-8. `build` runs capture, generates Typst, and compiles the final PDF.
+- chapters are the written explanation
+- flows are the proof that the screenshots are still real
+- the config ties everything together
+- the Typst template controls how the finished document looks
 
-If a screenshot reference, selector, or flow breaks, the manual build breaks.
+If a flow or screenshot reference breaks, that is not a side issue. The manual is now out of sync, so the build should fail.
 
 ## Expected Project Shape
 
-Use a structure like this:
+Runbook expects a structure like this:
 
 ```text
 manual/
@@ -89,16 +181,16 @@ manual/
   manual.config.mjs
 ```
 
-Important behavior:
+A few details matter:
 
-- Chapters are loaded from `chaptersDir` in filename order. Use numbered filenames.
-- Flows are loaded from `flowsDir` in filename order.
-- Flow files must currently be `.mjs`.
-- Files in the flows directory that start with `_` are ignored by discovery.
+- chapters are loaded in filename order, so numbered filenames are a good idea
+- flows are also loaded in filename order
+- flow files currently need to use `.mjs`
+- files in the flows directory that start with `_` are ignored by discovery
 
 ## Configuration
 
-Runbook loads `manual/manual.config.mjs` by default. You can also point to another profile with `--config`.
+By default, Runbook loads `manual/manual.config.mjs`. You can point it at another profile with `--config`.
 
 Example:
 
@@ -137,39 +229,41 @@ const config = {
 export default config;
 ```
 
-Field notes:
+A few field notes:
 
-- `baseUrl` becomes Playwright `baseURL`. If your flows call `page.goto("/")`, this must be valid.
-- `captureConcurrency` controls how many flows run in parallel.
-- `deviceScaleFactor` controls screenshot sharpness. The current default is `2`.
-- `paths.logoFile` is optional. If omitted, Runbook uses `assetsDir/logo.svg`.
-- Path fields support `{version}` interpolation. Example: `outputFile: "manual/dist/product-manual-demo-{version}.pdf"`.
+- `baseUrl` becomes Playwright’s `baseURL`
+- `captureConcurrency` controls how many flows run at once
+- `deviceScaleFactor` controls screenshot sharpness
+- `paths.logoFile` is optional; if you omit it, Runbook uses `assetsDir/logo.svg`
+- path fields support `{version}` interpolation, for example `outputFile: "manual/dist/runbook-demo-{version}.pdf"`
 
 ## Writing Chapters
 
-Each chapter must:
+Chapters are just Markdown files inside `chaptersDir`.
 
-- Be a `.md` file inside `chaptersDir`
-- Start with a level-one heading like `# Introduction`
+Each chapter should:
 
-Current Markdown support is intentionally narrow:
+- be a `.md` file
+- start with a level-one heading like `# Introduction`
+
+Markdown support is intentionally narrow right now. You should assume the PDF renderer supports:
 
 - headings
 - paragraphs
 - flat `-` bullet lists
 - screenshot directives
 
-Do not assume tables, fenced code blocks, blockquotes, or arbitrary Markdown extensions are rendered in the PDF yet.
+Do not assume tables, fenced code blocks, or blockquotes will render the way you want yet.
 
-### Screenshot Directive Syntax
+### Screenshot Directives
 
-Use this exact format:
+This is the syntax:
 
 ```md
 ![[screenshot:login-screen caption="Users start from a stable sign-in screen."]]
 ```
 
-For tall or narrow screenshots, you can reduce the rendered figure width:
+You can also control figure width:
 
 ```md
 ![[screenshot:sidebar width="68%" caption="Treat the sidebar as the operator's stable home base."]]
@@ -177,18 +271,17 @@ For tall or narrow screenshots, you can reduce the rendered figure width:
 
 Rules:
 
-- Screenshot IDs must match the pattern `[a-z0-9-]+`.
-- The `caption` is optional.
-- `width` is optional and accepts integer percentages from `10%` to `100%`.
-- Every referenced screenshot ID must be declared by some flow.
-- When a heading or lead-in paragraph sits immediately before a screenshot, Runbook keeps that lead-in attached to the figure when possible so sections do not split awkwardly across pages.
+- screenshot IDs must match `[a-z0-9-]+`
+- `caption` is optional
+- `width` is optional and accepts integer percentages from `10%` to `100%`
+- every referenced screenshot must be declared by a flow
 
-Example chapter:
+Example:
 
 ```md
 # Core Workflows
 
-This chapter demonstrates how authored prose references executable screenshots.
+This chapter demonstrates how written content can point at captured screenshots.
 
 ## Create a Project
 
@@ -197,9 +290,9 @@ This chapter demonstrates how authored prose references executable screenshots.
 
 ## Writing Flows
 
-Flows define how screenshots are produced. Each flow exports metadata plus an async function.
+Flows define how screenshots are produced. Each flow exports metadata and an async function.
 
-Use the helper in [manual/flows/_flow-helpers.mjs](manual/flows/_flow-helpers.mjs) unless you have a strong reason not to.
+The easiest way to write them is with `manual/flows/_flow-helpers.mjs`.
 
 Example:
 
@@ -237,33 +330,33 @@ export default defineFlow(
 
 ### Flow Rules
 
-- `meta.id` must be unique per flow.
-- `meta.screenshots` must contain every screenshot ID the flow captures.
-- Screenshot IDs must be unique across the whole manual.
-- Wrap meaningful actions in `flow.step(...)` so failures name the right step.
-- Use stable selectors. Prefer `data-testid` or dedicated `data-runbook-*` attributes.
+- `meta.id` must be unique
+- `meta.screenshots` must include every screenshot the flow captures
+- screenshot IDs must be unique across the entire manual
+- meaningful actions should be wrapped in `flow.step(...)`
+- selectors should be stable, preferably `data-testid` or dedicated `data-runbook-*` attributes
 
-### Available Flow Helpers
+### Available Helpers
 
-The helper-based flow context gives you:
+The flow context gives you:
 
-- `flow.page`: raw Playwright page
-- `flow.step(name, fn)`: names a step for failure reporting
-- `flow.render(html, stepName)`: sets a fixture HTML document directly
-- `flow.capture(id, annotations, options)`: applies annotations and captures a screenshot
+- `flow.page`
+- `flow.step(name, fn)`
+- `flow.render(html, stepName)`
+- `flow.capture(id, annotations, options)`
 
-Annotation helpers exposed through `ui`:
+The `ui` helper gives you:
 
-- `ui.step(target, number, options)`
-- `ui.callout(targetOrTargets, options)`
-- `ui.box(targetOrTargets, options)`
-- `ui.focus(targetOrTargets, options)`
-- `ui.arrow(targetOrTargets, options)`
-- `ui.redact(target, options)`
+- `ui.step(...)`
+- `ui.callout(...)`
+- `ui.box(...)`
+- `ui.focus(...)`
+- `ui.arrow(...)`
+- `ui.redact(...)`
 
 ### Grouped Annotations
 
-Pass an array of selectors when several controls should be treated as one concept:
+If several controls should be treated as one concept, pass an array of selectors:
 
 ```js
 ui.callout(
@@ -281,11 +374,11 @@ ui.callout(
 
 `flow.capture(..., options)` supports:
 
-- `clipTo`: a selector or selector array used to crop the screenshot
-- `padding`: a number or directional padding object
-- `fullPage`: capture the full page when `clipTo` is not used
-- `dim`: add a subdued scrim outside the focus area
-- `dimOpacity`: control scrim intensity
+- `clipTo`
+- `padding`
+- `fullPage`
+- `dim`
+- `dimOpacity`
 
 Example:
 
@@ -305,18 +398,18 @@ await flow.capture("dashboard-panels", (ui) => [
 });
 ```
 
-See [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md) for the visual rules that keep captures professional and consistent.
+For the visual style rules, read [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md).
 
-## Commands
+## Running The CLI Directly
 
-Default profile commands:
+You can use the package scripts:
 
 - `bun run runbook:check`
 - `bun run runbook:capture`
 - `bun run runbook:build`
 - `bun run dev`
 
-You can also run the CLI directly:
+Or call the CLI file directly:
 
 ```bash
 bun run src/cli.ts check
@@ -324,28 +417,21 @@ bun run src/cli.ts capture
 bun run src/cli.ts build
 ```
 
-To use a different manual profile:
+To use a different profile:
 
 ```bash
 bun run src/cli.ts build --config manuals/acme/manual.config.mjs
 ```
 
-Command behavior:
-
-- `check` validates required paths, chapters, flows, and screenshot references.
-- `capture` runs the flows and writes screenshot artifacts plus a manifest.
-- `build` validates, captures, generates Typst, and compiles the PDF.
-- `dev` currently runs the same build path through a lighter entrypoint.
-
 ## Build Outputs
 
-After a successful build, expect these artifacts:
+After a successful build, you should expect:
 
-- `screenshotsDir/*.png`: captured annotated screenshots
-- `manifestFile`: screenshot metadata with `id`, `flowId`, `path`, and step name
-- `captureReportFile`: success summary or structured failure report
-- `typstSourceFile`: generated Typst source
-- `outputFile`: final PDF
+- `screenshotsDir/*.png`
+- `manifestFile`
+- `captureReportFile`
+- `typstSourceFile`
+- `outputFile`
 
 On failure, `capture-report.json` includes:
 
@@ -356,78 +442,81 @@ On failure, `capture-report.json` includes:
 - `cause`
 - `failurePath`
 
-That gives you the exact flow and step that broke plus a failure screenshot.
+That is usually enough to tell you exactly which flow broke and where.
 
-## Using Runbook Against a Real App
+## Using Runbook Against A Real App
 
-The right pattern is:
+The usual pattern is:
 
-1. Start the app locally in a deterministic mode.
-2. Mock authentication and unstable APIs.
-3. Point `baseUrl` at the local app.
-4. Build a dedicated profile with its own chapters, flows, and assets.
-5. Capture clipped screenshots around the relevant UI region.
+1. run the app locally in a deterministic mode
+2. avoid live auth and unstable APIs where possible
+3. point `baseUrl` at the local app
+4. keep the manual profile separate from the app itself
+5. capture the relevant UI region instead of the whole page whenever possible
 
-For real applications, do not capture against live auth or live production data unless you explicitly want documentation to depend on them. That makes manuals flaky and non-repeatable.
+If you build manuals against live production data, expect the results to be noisy and flaky.
 
 ## Troubleshooting
 
-`Required path is missing`
+### `Required path is missing`
 
-- The config points at a directory or file that does not exist.
-- Check `chaptersDir`, `flowsDir`, `assetsDir`, and `templateFile`.
+The config points at a file or directory that does not exist. Check:
 
-`No chapters were found` or `No flow files were found`
+- `chaptersDir`
+- `flowsDir`
+- `assetsDir`
+- `templateFile`
 
-- The configured directories are empty.
-- Flow helpers like `_flow-helpers.mjs` do not count as flows.
+### `No chapters were found` or `No flow files were found`
 
-`Chapter is missing a level-one heading`
+The configured directory is empty, or only contains helper files. Files like `_flow-helpers.mjs` do not count as flows.
 
-- Every chapter must begin with a `#` heading.
+### `Chapter is missing a level-one heading`
 
-`Screenshot reference "..." does not exist in any flow`
+Every chapter needs to begin with a `#` heading.
 
-- A chapter references an ID that no flow declares.
-- Fix the chapter directive or add the screenshot to a flow.
+### `Screenshot reference "..." does not exist in any flow`
 
-`Duplicate screenshot id detected`
+A chapter references a screenshot ID that no flow declares. Either fix the chapter or add the screenshot to a flow.
 
-- Two flows declared the same screenshot ID.
-- IDs must be unique across the entire manual.
+### `Duplicate screenshot id detected`
 
-`Clip target not found` or `Annotation target not found`
+Two flows declared the same screenshot ID. Screenshot IDs need to be unique across the whole manual.
 
-- A selector changed or never existed in the captured state.
-- Use stable selectors and verify the flow reached the correct page state before capture.
+### `Clip target not found` or `Annotation target not found`
 
-`Typst compile failed`
+A selector changed, or the flow never reached the UI state you expected. Prefer stable selectors and make sure the flow has actually reached the correct screen before capture.
 
-- `typst` is missing from `PATH`, or the generated Typst references bad assets.
-- Verify `typst compile` works on the machine and check logo/template paths.
+### `Typst compile failed`
 
-Navigation to `"/"` fails
+Usually this means either:
 
-- Your flow used a relative URL but `baseUrl` is missing or invalid.
-- Set a valid `baseUrl` in the config.
+- `typst` is not on `PATH`
+- a referenced asset path is wrong
 
-Screenshots look noisy or over-annotated
+### Navigation to `"/"` fails
 
-- Tighten the crop with `clipTo`.
-- Move explanatory detail into chapter prose.
-- Reduce to one primary note card per screenshot.
-- Review [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md).
+Your flow used a relative URL but `baseUrl` is missing or invalid.
+
+### Screenshots look noisy or over-annotated
+
+Usually the fix is one of:
+
+- crop more tightly with `clipTo`
+- move extra explanation into chapter prose
+- reduce the number of callouts
+- review [docs/SCREENSHOT_STYLE_GUIDE.md](docs/SCREENSHOT_STYLE_GUIDE.md)
 
 ## Recommended Workflow
 
-Use this sequence when authoring a new manual:
+If you are authoring a new manual, this is a sensible order:
 
-1. Create a new config profile.
-2. Add numbered chapter files with stable screenshot references.
-3. Write one flow per documented workflow area.
-4. Run `bun run src/cli.ts check --config ...` until the structure is valid.
-5. Run `capture` to tune selectors, clipping, and annotation placement.
-6. Run `build` and review the PDF, not just the raw PNGs.
-7. Commit the manual sources and treat the PDF as reproducible output.
+1. create a config profile
+2. add numbered chapter files
+3. write one flow per workflow area
+4. run `check` until the structure is valid
+5. run `capture` until the screenshots look right
+6. run `build` and review the PDF, not just the PNGs
+7. commit the sources and treat the PDF as reproducible build output
 
-That is the intended working model for Runbook.
+That is the intended way to work with Runbook.

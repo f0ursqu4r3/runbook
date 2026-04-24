@@ -2,7 +2,7 @@
   "name": "runbook",
   "version": "0.1.0",
   "private": true,
-  "description": "Executable user manual pipeline",
+  "description": "CLI tool for building product manuals from Markdown and scripted UI flows",
   "type": "module",
   "bin": {
     "runbook": "./dist/cli.js"

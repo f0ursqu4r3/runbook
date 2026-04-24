@@ -1,22 +1,23 @@
 # Runbook
 
-Runbook is a CLI-first system for executable product manuals. It turns authored Markdown, scripted UI flows, and branded Typst templates into a single build pipeline.
+Runbook is a CLI tool for building product manuals from Markdown, scripted UI flows, and Typst templates.
 
-The main operator guide is [docs/USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/USAGE.md).
-Agent-facing JSON CLI guidance lives in [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
+You write the manual in Markdown. You capture screenshots with small Playwright flows. Runbook turns that into a PDF and fails the build when the documented UI no longer matches what the flows can actually capture.
 
-## Current Status
+If you want the full walkthrough, start with [docs/USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/USAGE.md). If you are calling the CLI from another tool or agent, use [docs/AI_USAGE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/AI_USAGE.md).
 
-This repository now includes:
+## What’s Here
 
-- TypeScript CLI entrypoints
-- config loading
+This repo already includes:
+
+- the TypeScript CLI
+- config loading and validation
 - chapter and flow discovery
-- deterministic Playwright capture against local sample fixtures
-- annotation overlays and redaction support
-- screenshot manifest and capture failure reporting
+- deterministic Playwright capture against local fixtures
+- screenshot annotations and redaction support
+- manifest and failure-report generation
 - Typst source generation and PDF compilation
-- sample manual content, assets, and flows
+- starter manual content, assets, and flows
 
 ## Quick Start
 
@@ -30,54 +31,64 @@ bun run runbook:capture
 bun run runbook:build
 ```
 
-For local PDF builds, `typst` must also be available on your `PATH`.
+You also need `typst` on your `PATH` if you want PDF builds to work locally.
 
-## Commands
+## Main Commands
 
-- `bun run runbook:check` validates project structure, chapters, and screenshot references.
-- `bun run runbook:doctor` runs a preflight check for config validity, required paths, Typst, and Playwright Chromium.
-- `bun run runbook:init [target-dir]` scaffolds a starter manual profile with a config, chapter, flow, template, and logo.
-- `bun run runbook:capture` runs the Playwright flows and emits real screenshot artifacts plus a manifest.
-- `bun run runbook:build` validates the manual, captures screenshots, generates Typst, and compiles the final PDF.
-- `bun run dev` runs the same build in a lightweight dev loop entrypoint.
-- `bun test` runs repository tests, including the capture failure-path test that asserts report output.
+- `bun run runbook:init [target-dir]`
+  Creates a starter manual profile with a config file, a chapter, a flow, a template, and a logo.
+- `bun run runbook:doctor`
+  Checks that your config, files, Typst install, and Playwright browser setup are all in place.
+- `bun run runbook:check`
+  Validates the manual structure without running capture.
+- `bun run runbook:capture`
+  Runs the flows and writes screenshots plus a manifest.
+- `bun run runbook:build`
+  Runs the full pipeline and produces the final PDF.
+- `bun run dev`
+  Runs the same build path through a lighter entrypoint.
 
-You can also point the CLI at any compatible manual profile explicitly:
+If you want the full CLI help:
+
+```bash
+bun run runbook --help
+```
+
+If you want plain line-by-line output with no progress bars, add `--no-progress`.
+
+If you are driving the tool from another program, prefer `--json`.
+
+## Using Another Profile
+
+By default, Runbook looks for `manual/manual.config.mjs`. If you want to work on a different profile, pass `--config`.
 
 ```bash
 bun run src/cli.ts build --config manuals/acme/manual.config.mjs
 ```
 
-Use `bun run runbook --help` to see the full command summary and the recommended operator flow.
-Agents and automation should prefer `runbook ... --json` for a stable machine-readable interface.
-Pass `--no-progress` if you want plain log output without progress bars.
-Path fields in the config also support `{version}` interpolation, for example `outputFile: "manual/dist/product-manual-demo-{version}.pdf"`.
-
-To start a new profile outside the default `manual/` directory:
+To create a new profile outside the default `manual/` directory:
 
 ```bash
 bun run runbook:init manuals/acme
 bun run src/cli.ts doctor --config manuals/acme/manual.config.mjs
 ```
 
-## Install As A CLI
+## Installing It As A CLI
 
-The repository can also be installed as a local system CLI command.
-
-Build and link it:
+If you want `runbook` available as a shell command outside this repo:
 
 ```bash
 bun run build
 npm link
 ```
 
-Or use the convenience script:
+Or use the shortcut:
 
 ```bash
 bun run runbook:link
 ```
 
-After that, `runbook --help` should work from any shell session that can see your global npm bin directory.
+After that, `runbook --help` should work anywhere your global npm bin directory is on `PATH`.
 
 To remove the link later:
 
@@ -85,9 +96,31 @@ To remove the link later:
 npm unlink -g runbook
 ```
 
-Runtime-loaded project files currently use `.mjs` so the scaffold works both through Bun in development and plain Node after TypeScript compilation.
+## How It Fits Together
 
-Flow authoring is centered on `manual/flows/_flow-helpers.mjs`, which provides `defineFlow(...)` plus small helpers like `render(...)` and `capture(...)` so flow files stay declarative.
+Runbook expects a manual profile that looks roughly like this:
+
+```text
+manual/
+  chapters/
+  flows/
+  assets/
+  template/
+  manual.config.mjs
+```
+
+The basic flow is simple:
+
+- chapters in `manual/chapters` hold the written content
+- flows in `manual/flows` define how screenshots are captured
+- `manual.config.mjs` tells Runbook where everything lives and how the build should behave
+- the Typst template controls the final PDF layout
+
+Runtime-loaded project files currently use `.mjs`, which keeps things working both through Bun in development and through compiled Node output.
+
+## Flow Authoring
+
+Flow files are meant to stay small and readable. The helper in `manual/flows/_flow-helpers.mjs` gives you a nicer authoring surface through `defineFlow(...)`, `render(...)`, and `capture(...)`.
 
 Example:
 
@@ -112,11 +145,15 @@ export default defineFlow(
 );
 ```
 
-The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, and `ui.redact`. Those map to a more polished visual system with glow treatments, glass panels, curved connectors, and richer callout cards intended for modern release-quality documentation.
+The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, and `ui.redact`.
 
-Grouped multi-target annotations are supported by passing an array of selectors to `ui.box`, `ui.focus`, `ui.callout`, or `ui.arrow`.
+If you want the screenshots to look consistent, read [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md).
 
-See [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md) for the annotation tone and composition rules used by the sample manual.
+## Notes
+
+- Path fields in the config support `{version}` interpolation. For example: `outputFile: "manual/dist/runbook-demo-{version}.pdf"`.
+- The generated PDF should be treated as build output, not the source of truth.
+- If a screenshot reference, selector, or flow breaks, the build should break too.
 
 ## Project Layout
 
@@ -127,7 +164,7 @@ src/
 dist/
 ```
 
-See [docs/BRIEF.md](/Users/la.kyle.dougan/git/eos/runbook/docs/BRIEF.md) for the full product direction.
+The broader product direction is in [docs/BRIEF.md](/Users/la.kyle.dougan/git/eos/runbook/docs/BRIEF.md).
 
 ## CI
 
