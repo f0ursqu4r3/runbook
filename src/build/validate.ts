@@ -1,7 +1,7 @@
 import { access } from "node:fs/promises";
 
 import { ValidationError } from "../shared/errors.js";
-import type { Chapter, FlowFile, RunbookConfig } from "../shared/types.js";
+import type { AssetScreenshot, Chapter, FlowFile, RunbookConfig } from "../shared/types.js";
 
 export async function validateProjectScaffold(config: RunbookConfig): Promise<void> {
   const requiredPaths = [
@@ -48,16 +48,36 @@ export function validateFlows(flows: FlowFile[]): void {
   }
 }
 
-export function validateScreenshotReferences(chapters: Chapter[], flows: FlowFile[]): void {
-  const availableScreenshots = new Set(
-    flows.flatMap((flow) => flow.screenshots)
-  );
+export function validateScreenshotInventory(
+  flows: FlowFile[],
+  assetScreenshots: AssetScreenshot[] = []
+): void {
+  const flowScreenshotIds = new Set(flows.flatMap((flow) => flow.screenshots));
+
+  for (const screenshot of assetScreenshots) {
+    if (flowScreenshotIds.has(screenshot.id)) {
+      throw new ValidationError(
+        `Duplicate screenshot id detected across flows and assets: ${screenshot.id}`
+      );
+    }
+  }
+}
+
+export function validateScreenshotReferences(
+  chapters: Chapter[],
+  flows: FlowFile[],
+  assetScreenshots: AssetScreenshot[] = []
+): void {
+  const availableScreenshots = new Set([
+    ...flows.flatMap((flow) => flow.screenshots),
+    ...assetScreenshots.map((screenshot) => screenshot.id)
+  ]);
 
   for (const chapter of chapters) {
     for (const ref of chapter.screenshotRefs) {
       if (!availableScreenshots.has(ref.id)) {
         throw new ValidationError(
-          `Screenshot reference "${ref.id}" in ${chapter.path} does not exist in any flow`
+          `Screenshot reference "${ref.id}" in ${chapter.path} does not exist in any flow or asset screenshot`
         );
       }
     }

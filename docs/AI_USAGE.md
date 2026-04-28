@@ -72,7 +72,7 @@ Failure shape:
 
 - `init`: `configPath`, `targetDir`, `createdPaths`
 - `doctor`: `ok`, `checks`
-- `check`: `chapters`, `flows`, `screenshotReferences`
+- `check`: `chapters`, `flows`, `assetScreenshots`, `screenshotReferences`
 - `capture`: `manifestFile`, `reportFile`, `screenshots`
 - `build`: `outputFile`, `typstSourceFile`, `manifestFile`, `reportFile`
 

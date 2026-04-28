@@ -6,6 +6,11 @@ const config = {
   viewport: { width: 1440, height: 900 },
   locale: "en-US",
   timezone: "UTC",
+  labels: {
+    contentsTitle: "Contents",
+    versionLabel: "Version",
+    generatedLabel: "Generated"
+  },
   theme: {
     primary: "#0f172a",
     accent: "#d97706",

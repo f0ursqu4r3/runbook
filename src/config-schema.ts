@@ -13,6 +13,13 @@ export const RunbookConfigSchema = z.object({
   timezone: z.string().min(1),
   captureConcurrency: z.number().int().positive().optional(),
   deviceScaleFactor: z.number().positive().optional(),
+  labels: z
+    .object({
+      contentsTitle: z.string().min(1).optional(),
+      versionLabel: z.string().min(1).optional(),
+      generatedLabel: z.string().min(1).optional()
+    })
+    .optional(),
   theme: z.object({
     primary: z.string().min(1),
     accent: z.string().min(1),

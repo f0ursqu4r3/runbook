@@ -3,10 +3,11 @@ import { expect, test } from "bun:test";
 import {
   validateChapters,
   validateFlows,
+  validateScreenshotInventory,
   validateScreenshotReferences
 } from "../src/build/validate.js";
 import { ValidationError } from "../src/shared/errors.js";
-import type { Chapter, FlowFile } from "../src/shared/types.js";
+import type { AssetScreenshot, Chapter, FlowFile } from "../src/shared/types.js";
 
 function chapter(overrides: Partial<Chapter> = {}): Chapter {
   return {
@@ -24,6 +25,14 @@ function flow(overrides: Partial<FlowFile> = {}): FlowFile {
     id: "flow-a",
     screenshots: ["a"],
     run: async () => undefined,
+    ...overrides
+  };
+}
+
+function assetScreenshot(overrides: Partial<AssetScreenshot> = {}): AssetScreenshot {
+  return {
+    id: "asset-a",
+    path: "manual/assets/screenshots/asset-a.png",
     ...overrides
   };
 }
@@ -62,4 +71,17 @@ test("validateScreenshotReferences passes when all references resolve", () => {
   const chapters = [chapter({ screenshotRefs: [{ id: "a" }] })];
   const flows = [flow({ screenshots: ["a"] })];
   expect(() => validateScreenshotReferences(chapters, flows)).not.toThrow();
+});
+
+test("validateScreenshotReferences accepts asset screenshots", () => {
+  const chapters = [chapter({ screenshotRefs: [{ id: "outside-flow" }] })];
+  const flows = [flow({ screenshots: ["a"] })];
+  const assets = [assetScreenshot({ id: "outside-flow" })];
+  expect(() => validateScreenshotReferences(chapters, flows, assets)).not.toThrow();
+});
+
+test("validateScreenshotInventory rejects duplicate ids across flows and assets", () => {
+  const flows = [flow({ screenshots: ["shared"] })];
+  const assets = [assetScreenshot({ id: "shared" })];
+  expect(() => validateScreenshotInventory(flows, assets)).toThrow(/Duplicate screenshot id/);
 });

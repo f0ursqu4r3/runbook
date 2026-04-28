@@ -7,6 +7,7 @@ import { applyAnnotations, clearAnnotations } from "./annotate.js";
 import { resetDir, writeText, listFiles } from "../shared/fs.js";
 import { FlowStepError, RunbookError } from "../shared/errors.js";
 import type {
+  AssetScreenshot,
   CaptureManifest,
   FlowContext,
   FlowFile,
@@ -31,6 +32,7 @@ type FlowModule = {
 };
 
 type RunCaptureOptions = {
+  assetScreenshots?: AssetScreenshot[];
   onFlowStart?: (flow: FlowFile, started: number, total: number) => void;
   onScreenshotCaptured?: (
     flow: FlowFile,
@@ -100,6 +102,8 @@ async function runFlow(
 
   const flowContext: FlowContext = {
     page,
+    locale: config.locale,
+    timezone: config.timezone,
     annotate: (annotations, options) => wrap(() => applyAnnotations(page, annotations, options)),
     clearAnnotations: () => wrap(() => clearAnnotations(page)),
     shot: (id, options = {}) =>
@@ -119,6 +123,7 @@ async function runFlow(
 
         entries.push({
           id,
+          source: "flow",
           flowId: flow.id,
           path: screenshotPath,
           step: currentStep
@@ -253,7 +258,14 @@ export async function runCapture(
 
     const manifest: CaptureManifest = {
       generatedAt: new Date().toISOString(),
-      entries
+      entries: [
+        ...entries,
+        ...(options.assetScreenshots ?? []).map((screenshot) => ({
+          id: screenshot.id,
+          source: "asset" as const,
+          path: screenshot.path
+        }))
+      ]
     };
 
     await writeText(config.paths.manifestFile, JSON.stringify(manifest, null, 2));

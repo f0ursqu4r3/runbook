@@ -17,7 +17,7 @@ async function makeTempRoot(): Promise<string> {
   return root;
 }
 
-test("loadConfig expands {version} tokens in path fields", async () => {
+test("loadConfig expands path template tokens", async () => {
   const root = await makeTempRoot();
   const configPath = path.join(root, "manual.config.mjs");
 
@@ -47,7 +47,7 @@ test("loadConfig expands {version} tokens in path fields", async () => {
         reportsDir: "manual/dist/reports",
         captureReportFile: "manual/dist/reports/capture-report.json",
         manifestFile: "manual/dist/screenshots/manifest.json",
-        outputFile: "manual/dist/product-manual-demo-{version}.pdf"
+        outputFile: "manual/dist/product-manual-demo-{version}-{locale}.pdf"
       }
     };`,
     "utf8"
@@ -55,5 +55,55 @@ test("loadConfig expands {version} tokens in path fields", async () => {
 
   const config = await loadConfig(configPath);
 
-  expect(config.paths.outputFile).toBe("manual/dist/product-manual-demo-2.4.1-beta.pdf");
+  expect(config.paths.outputFile).toBe("manual/dist/product-manual-demo-2.4.1-beta-en-US.pdf");
+});
+
+test("loadConfig accepts localized PDF chrome labels", async () => {
+  const root = await makeTempRoot();
+  const configPath = path.join(root, "manual.config.mjs");
+
+  await writeFile(
+    configPath,
+    `export default {
+      productName: "Product UI",
+      title: "Product Demo",
+      version: "2.4.1-beta",
+      baseUrl: "http://localhost:3000",
+      viewport: { width: 1440, height: 900 },
+      locale: "es-MX",
+      timezone: "UTC",
+      labels: {
+        contentsTitle: "Contenido",
+        versionLabel: "Revision",
+        generatedLabel: "Emitido"
+      },
+      theme: {
+        primary: "#0f172a",
+        accent: "#d97706",
+        muted: "#475569"
+      },
+      paths: {
+        chaptersDir: "manual/chapters",
+        flowsDir: "manual/flows",
+        assetsDir: "manual/assets",
+        templateFile: "manual/template/manual.typ",
+        outputDir: "manual/dist",
+        typstSourceFile: "manual/dist/manual.typ",
+        screenshotsDir: "manual/dist/screenshots",
+        reportsDir: "manual/dist/reports",
+        captureReportFile: "manual/dist/reports/capture-report.json",
+        manifestFile: "manual/dist/screenshots/manifest.json",
+        outputFile: "manual/dist/product-manual-demo.pdf"
+      }
+    };`,
+    "utf8"
+  );
+
+  const config = await loadConfig(configPath);
+
+  expect(config.labels).toEqual({
+    contentsTitle: "Contenido",
+    versionLabel: "Revision",
+    generatedLabel: "Emitido"
+  });
 });

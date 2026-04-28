@@ -6,6 +6,7 @@ At a high level, Runbook takes three things:
 
 - written content in Markdown
 - screenshot flows written in Playwright
+- optional asset screenshots stored under `assets/screenshots`
 - a Typst template for the final layout
 
 It uses those inputs to build a manual. If a referenced screenshot no longer matches what the flows can capture, the build fails instead of quietly drifting out of date.
@@ -105,7 +106,7 @@ It makes sure:
 - flows exist
 - chapters begin with a level-one heading
 - screenshot IDs are unique
-- every screenshot reference in Markdown is declared by a flow
+- every screenshot reference in Markdown is declared by a flow or exists in `assets/screenshots`
 
 Example:
 
@@ -175,6 +176,7 @@ manual/
     login.flow.mjs
     create-project.flow.mjs
   assets/
+    screenshots/
     logo.svg
   template/
     manual.typ
@@ -187,6 +189,7 @@ A few details matter:
 - flows are also loaded in filename order
 - flow files currently need to use `.mjs`
 - files in the flows directory that start with `_` are ignored by discovery
+- files in `assets/screenshots` are addressable by filename stem from screenshot directives
 
 ## Configuration
 
@@ -205,6 +208,11 @@ const config = {
   timezone: "UTC",
   captureConcurrency: 4,
   deviceScaleFactor: 2,
+  labels: {
+    contentsTitle: "Contents",
+    versionLabel: "Version",
+    generatedLabel: "Generated"
+  },
   theme: {
     primary: "#0f172a",
     accent: "#d97706",
@@ -234,8 +242,52 @@ A few field notes:
 - `baseUrl` becomes Playwright’s `baseURL`
 - `captureConcurrency` controls how many flows run at once
 - `deviceScaleFactor` controls screenshot sharpness
+- `locale` and `timezone` are applied to the Playwright browser context and exposed to flows
+- `labels` localizes PDF chrome such as the table-of-contents title and cover labels
 - `paths.logoFile` is optional; if you omit it, Runbook uses `assetsDir/logo.svg`
-- path fields support `{version}` interpolation, for example `outputFile: "manual/dist/runbook-demo-{version}.pdf"`
+- path fields support `{version}` and `{locale}` interpolation, for example `outputFile: "manual/dist/runbook-demo-{version}-{locale}.pdf"`
+
+## Localized Manuals
+
+Runbook treats localized manuals as separate manual profiles. Keep screenshot IDs stable across locales, translate the chapter Markdown and captions inside each profile, and set the profile `locale` to the app locale you want Playwright to capture.
+
+Example:
+
+```text
+manuals/
+  acme-en/
+    manual.config.mjs
+    chapters/
+  acme-es/
+    manual.config.mjs
+    chapters/
+```
+
+In the localized config:
+
+```js
+export default {
+  productName: "Acme",
+  title: "Manual de Acme",
+  version: "1.2.0",
+  baseUrl: "http://localhost:3000",
+  viewport: { width: 1440, height: 900 },
+  locale: "es-MX",
+  timezone: "UTC",
+  labels: {
+    contentsTitle: "Contenido",
+    versionLabel: "Revision",
+    generatedLabel: "Emitido"
+  },
+  // ...
+  paths: {
+    // ...
+    outputFile: "dist/acme-{version}-{locale}.pdf"
+  }
+};
+```
+
+Generated Typst source also defines `runbook_locale`, `runbook_label_contents`, `runbook_label_version`, and `runbook_label_generated` so custom templates can consume the same localized chrome labels.
 
 ## Writing Chapters
 
@@ -274,7 +326,7 @@ Rules:
 - screenshot IDs must match `[a-z0-9-]+`
 - `caption` is optional
 - `width` is optional and accepts integer percentages from `10%` to `100%`
-- every referenced screenshot must be declared by a flow
+- every referenced screenshot must be declared by a flow or exist in `assets/screenshots`
 
 Example:
 
@@ -287,6 +339,32 @@ This chapter demonstrates how written content can point at captured screenshots.
 
 ![[screenshot:create-project caption="Create the workspace before authors begin documenting flows."]]
 ```
+
+### Asset Screenshots
+
+Use asset screenshots for images generated outside Runbook's Playwright flow, such as AI-generated UI mockups, externally produced charts, or screenshots captured by another system.
+
+Store them in:
+
+```text
+manual/assets/screenshots/<id>.png
+```
+
+Then reference the filename stem from Markdown:
+
+```md
+![[screenshot:generated-chart width="80%" caption="Externally generated release chart."]]
+```
+
+For example, `manual/assets/screenshots/generated-chart.png` resolves `![[screenshot:generated-chart]]`.
+
+Asset screenshots are not copied into `screenshotsDir`, because `screenshotsDir` is reset during capture. Instead, Runbook records them in the screenshot manifest with `source: "asset"` and points Typst at the checked-in asset path.
+
+Rules:
+
+- asset screenshot files can use `.png`, `.jpg`, `.jpeg`, or `.webp`
+- filename stems must match `[a-z0-9-]+`
+- asset screenshot IDs must not duplicate flow screenshot IDs
 
 ## Writing Flows
 
@@ -428,7 +506,7 @@ bun run src/cli.ts build --config manuals/acme/manual.config.mjs
 After a successful build, you should expect:
 
 - `screenshotsDir/*.png`
-- `manifestFile`
+- `manifestFile`, including both captured flow screenshots and asset screenshots
 - `captureReportFile`
 - `typstSourceFile`
 - `outputFile`
@@ -475,13 +553,13 @@ The configured directory is empty, or only contains helper files. Files like `_f
 
 Every chapter needs to begin with a `#` heading.
 
-### `Screenshot reference "..." does not exist in any flow`
+### `Screenshot reference "..." does not exist in any flow or asset screenshot`
 
-A chapter references a screenshot ID that no flow declares. Either fix the chapter or add the screenshot to a flow.
+A chapter references a screenshot ID that no flow declares and no file in `assets/screenshots` provides. Either fix the chapter, add the screenshot to a flow, or store the external image as `assets/screenshots/<id>.png`.
 
 ### `Duplicate screenshot id detected`
 
-Two flows declared the same screenshot ID. Screenshot IDs need to be unique across the whole manual.
+Two flows declared the same screenshot ID, or an asset screenshot duplicates a flow screenshot ID. Screenshot IDs need to be unique across the whole manual.
 
 ### `Clip target not found` or `Annotation target not found`
 

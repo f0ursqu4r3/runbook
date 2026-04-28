@@ -1,4 +1,5 @@
 import { loadConfig } from "../config.js";
+import { discoverAssetScreenshots, validateAssetScreenshotIds } from "../build/asset-screenshots.js";
 import { loadChapters } from "../build/parse.js";
 import { resolveScreenshotUsage } from "../build/resolve.js";
 import { emitPdfArtifact } from "../build/typst.js";
@@ -6,6 +7,7 @@ import {
   validateChapters,
   validateFlows,
   validateProjectScaffold,
+  validateScreenshotInventory,
   validateScreenshotReferences
 } from "../build/validate.js";
 import { discoverFlows, runCapture } from "../capture/runner.js";
@@ -31,6 +33,7 @@ export async function runBuild(configPath?: string): Promise<BuildResult> {
 
     const chapters = await loadChapters(config.paths.chaptersDir);
     const flows = await discoverFlows(config.paths.flowsDir);
+    const assetScreenshots = await discoverAssetScreenshots(config);
     const totalScreenshots = flows.reduce((count, flow) => count + flow.screenshots.length, 0);
     const totalSteps = 5 + totalScreenshots + chapters.length * 2;
     progress.setTotal(totalSteps, `Validating ${chapters.length} chapters`);
@@ -41,11 +44,14 @@ export async function runBuild(configPath?: string): Promise<BuildResult> {
     }
 
     validateFlows(flows);
-    validateScreenshotReferences(chapters, flows);
+    validateAssetScreenshotIds(assetScreenshots);
+    validateScreenshotInventory(flows, assetScreenshots);
+    validateScreenshotReferences(chapters, flows, assetScreenshots);
     progress.advance(`Validated ${flows.length} flows`);
     progress.advance(`Resolved screenshot references`);
 
     const manifest = await runCapture(config, flows, {
+      assetScreenshots,
       onFlowStart: (flow, started, total) => {
         progress.set(3 + chapters.length, `Starting flow ${started}/${total}: ${flow.id}`);
       },

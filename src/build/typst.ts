@@ -28,6 +28,21 @@ type RenderUnit =
       screenshot: Extract<MarkdownBlock, { type: "screenshot" }>;
     };
 
+type RenderLabels = Required<NonNullable<RunbookConfig["labels"]>>;
+
+const DEFAULT_LABELS: RenderLabels = {
+  contentsTitle: "Contents",
+  versionLabel: "Version",
+  generatedLabel: "Generated"
+};
+
+function resolveLabels(config: RunbookConfig): RenderLabels {
+  return {
+    ...DEFAULT_LABELS,
+    ...config.labels
+  };
+}
+
 function escapeTypstText(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
@@ -35,6 +50,21 @@ function escapeTypstText(value: string): string {
     .replace(/\[/g, "\\[")
     .replace(/\]/g, "\\]")
     .replace(/"/g, '\\"');
+}
+
+function escapeTypstString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function renderRuntimeDefinitions(config: RunbookConfig): string {
+  const labels = resolveLabels(config);
+
+  return [
+    `#let runbook_locale = "${escapeTypstString(config.locale)}"`,
+    `#let runbook_label_contents = "${escapeTypstString(labels.contentsTitle)}"`,
+    `#let runbook_label_version = "${escapeTypstString(labels.versionLabel)}"`,
+    `#let runbook_label_generated = "${escapeTypstString(labels.generatedLabel)}"`
+  ].join("\n");
 }
 
 function parseMarkdown(body: string): MarkdownBlock[] {
@@ -124,7 +154,7 @@ function renderBlock(
         .join("/");
       const caption = block.caption ? `[${escapeTypstText(block.caption)}]` : "none";
       const width = block.widthPercent ? `${block.widthPercent}%` : "100%";
-      return `#runbook_figure("${relativePath}", caption: ${caption}, width: ${width})`;
+      return `#runbook_figure("${escapeTypstString(relativePath)}", caption: ${caption}, width: ${width})`;
     }
   }
 }
@@ -213,6 +243,7 @@ export async function renderTypstSource(
 ): Promise<string> {
   options.onStage?.("template");
   const templateSource = await readText(config.paths.templateFile);
+  const labels = resolveLabels(config);
   const logoSource = config.paths.logoFile ?? path.join(config.paths.assetsDir, "logo.svg");
   const logoPath = path
     .relative(path.dirname(config.paths.typstSourceFile), logoSource)
@@ -233,12 +264,14 @@ export async function renderTypstSource(
 
   options.onStage?.("cover");
   return [
+    renderRuntimeDefinitions(config),
+    "",
     templateSource,
     "",
-    `#runbook_cover("${escapeTypstText(config.title)}", "${escapeTypstText(config.version)}", "${escapeTypstText(manifest.generatedAt)}", "${logoPath}")`,
+    `#runbook_cover("${escapeTypstString(config.title)}", "${escapeTypstString(config.version)}", "${escapeTypstString(manifest.generatedAt)}", "${escapeTypstString(logoPath)}")`,
     "",
     "#pagebreak()",
-    "#outline(title: [Contents])",
+    `#outline(title: [${escapeTypstText(labels.contentsTitle)}])`,
     "",
     "#pagebreak()",
     chapterMarkup
@@ -273,7 +306,7 @@ export async function emitPdfArtifact(
 
   return {
     chapters: chapters.length,
-    flows: new Set(manifest.entries.map((entry) => entry.flowId)).size,
+    flows: new Set(manifest.entries.flatMap((entry) => (entry.flowId ? [entry.flowId] : []))).size,
     screenshots: manifest.entries.length,
     outputFile: config.paths.outputFile
   };

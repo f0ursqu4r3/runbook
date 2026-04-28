@@ -1,5 +1,10 @@
 import { loadConfig } from "../config.js";
-import { validateFlows, validateProjectScaffold } from "../build/validate.js";
+import { discoverAssetScreenshots, validateAssetScreenshotIds } from "../build/asset-screenshots.js";
+import {
+  validateFlows,
+  validateProjectScaffold,
+  validateScreenshotInventory
+} from "../build/validate.js";
 import { discoverFlows, runCapture } from "../capture/runner.js";
 import { log, startProgress } from "../shared/logging.js";
 
@@ -17,7 +22,10 @@ export async function runCaptureCommand(configPath?: string): Promise<CaptureCom
   await validateProjectScaffold(config);
 
   const flows = await discoverFlows(config.paths.flowsDir);
+  const assetScreenshots = await discoverAssetScreenshots(config);
   validateFlows(flows);
+  validateAssetScreenshotIds(assetScreenshots);
+  validateScreenshotInventory(flows, assetScreenshots);
   const totalScreenshots = flows.reduce((count, flow) => count + flow.screenshots.length, 0);
   const progress = startProgress(
     "Capture",
@@ -28,6 +36,7 @@ export async function runCaptureCommand(configPath?: string): Promise<CaptureCom
   try {
     progress.advance(`Loaded ${flows.length} flows`);
     const manifest = await runCapture(config, flows, {
+      assetScreenshots,
       onFlowStart: (flow, started, total) => {
         progress.set(1, `Starting flow ${started}/${total}: ${flow.id}`);
       },

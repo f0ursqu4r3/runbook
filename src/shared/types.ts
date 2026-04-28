@@ -10,6 +10,11 @@ export type RunbookConfig = {
   timezone: string;
   captureConcurrency?: number;
   deviceScaleFactor?: number;
+  labels?: {
+    contentsTitle?: string;
+    versionLabel?: string;
+    generatedLabel?: string;
+  };
   theme: {
     primary: string;
     accent: string;
@@ -78,6 +83,8 @@ export type AnnotateOptions = {
 
 export type FlowContext = {
   page: Page;
+  locale: string;
+  timezone: string;
   annotate: (annotations: Annotation[], options?: AnnotateOptions) => Promise<void>;
   clearAnnotations: () => Promise<void>;
   shot: (id: string, options?: ShotOptions) => Promise<void>;
@@ -91,9 +98,15 @@ export type FlowFile = {
   run: (ctx: FlowContext) => Promise<void>;
 };
 
+export type AssetScreenshot = {
+  id: string;
+  path: string;
+};
+
 export type CaptureManifestEntry = {
   id: string;
-  flowId: string;
+  source?: "flow" | "asset";
+  flowId?: string;
   path: string;
   step?: string;
   caption?: string;

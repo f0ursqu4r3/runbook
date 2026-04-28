@@ -5,17 +5,19 @@ import { promisify } from "node:util";
 
 import { chromium } from "playwright";
 
+import { discoverAssetScreenshots, validateAssetScreenshotIds } from "../build/asset-screenshots.js";
 import { loadChapters } from "../build/parse.js";
 import {
   validateChapters,
   validateFlows,
+  validateScreenshotInventory,
   validateScreenshotReferences
 } from "../build/validate.js";
 import { loadConfig } from "../config.js";
 import { discoverFlows } from "../capture/runner.js";
 import { CommandResultError } from "../shared/errors.js";
 import { log, startProgress } from "../shared/logging.js";
-import type { Chapter, FlowFile, RunbookConfig } from "../shared/types.js";
+import type { AssetScreenshot, Chapter, FlowFile, RunbookConfig } from "../shared/types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -131,7 +133,7 @@ export async function runDoctor(configPath?: string): Promise<DoctorResult> {
     } satisfies DoctorResult);
   }
   progress.advance("Validated config");
-  const totalChecks = 11 + (config.paths.logoFile ? 1 : 0);
+  const totalChecks = 12 + (config.paths.logoFile ? 1 : 0);
   progress.setTotal(totalChecks, "Checking dependencies");
 
   checks.push(await checkExecutable("Typst", "typst", ["--version"], "Install Typst and ensure `typst --version` works."));
@@ -159,6 +161,7 @@ export async function runDoctor(configPath?: string): Promise<DoctorResult> {
   const pathStatus = new Map(checks.map((check) => [check.label, check.ok]));
   let chapters: Chapter[] | null = null;
   let flows: FlowFile[] | null = null;
+  let assetScreenshots: AssetScreenshot[] = [];
 
   if (pathStatus.get("Chapters directory")) {
     try {
@@ -204,9 +207,32 @@ export async function runDoctor(configPath?: string): Promise<DoctorResult> {
     }
   }
 
+  if (pathStatus.get("Assets directory")) {
+    try {
+      assetScreenshots = await discoverAssetScreenshots(config);
+      validateAssetScreenshotIds(assetScreenshots);
+      checks.push({
+        label: "Asset screenshots",
+        ok: true,
+        detail: `${assetScreenshots.length} asset screenshot${assetScreenshots.length === 1 ? "" : "s"} discovered`
+      });
+      progress.advance(`Loaded ${assetScreenshots.length} asset screenshots`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      checks.push({
+        label: "Asset screenshots",
+        ok: false,
+        detail: message,
+        fix: "Store generated screenshots as `assets/screenshots/<id>.png` with lowercase dash-separated IDs."
+      });
+      progress.advance("Asset screenshot discovery failed");
+    }
+  }
+
   if (chapters && flows) {
     try {
-      validateScreenshotReferences(chapters, flows);
+      validateScreenshotInventory(flows, assetScreenshots);
+      validateScreenshotReferences(chapters, flows, assetScreenshots);
       checks.push({
         label: "Screenshot references",
         ok: true,
@@ -219,7 +245,7 @@ export async function runDoctor(configPath?: string): Promise<DoctorResult> {
         label: "Screenshot references",
         ok: false,
         detail: message,
-        fix: "Make sure every `![[screenshot:...]]` reference is declared by a flow."
+        fix: "Make sure every `![[screenshot:...]]` reference is declared by a flow or stored in `assets/screenshots`."
       });
       progress.advance("Screenshot reference check failed");
     }

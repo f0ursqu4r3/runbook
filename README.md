@@ -105,6 +105,7 @@ manual/
   chapters/
   flows/
   assets/
+    screenshots/
   template/
   manual.config.mjs
 ```
@@ -113,6 +114,7 @@ The basic flow is simple:
 
 - chapters in `manual/chapters` hold the written content
 - flows in `manual/flows` define how screenshots are captured
+- externally generated screenshots live in `manual/assets/screenshots`
 - `manual.config.mjs` tells Runbook where everything lives and how the build should behave
 - the Typst template controls the final PDF layout
 
@@ -149,9 +151,20 @@ The helper exposes `ui.focus`, `ui.box`, `ui.step`, `ui.callout`, `ui.arrow`, an
 
 If you want the screenshots to look consistent, read [docs/SCREENSHOT_STYLE_GUIDE.md](/Users/la.kyle.dougan/git/eos/runbook/docs/SCREENSHOT_STYLE_GUIDE.md).
 
+## Asset Screenshots
+
+Screenshots generated outside a flow should be checked in under `manual/assets/screenshots/<id>.png`. Reference them with the same directive used for captured screenshots:
+
+```md
+![[screenshot:generated-chart caption="Externally generated chart used in the release packet."]]
+```
+
+The filename stem is the screenshot ID, so `manual/assets/screenshots/generated-chart.png` resolves `![[screenshot:generated-chart]]`. Asset screenshot IDs use the same `[a-z0-9-]+` rule as flow screenshots and cannot duplicate a flow screenshot ID.
+
 ## Notes
 
-- Path fields in the config support `{version}` interpolation. For example: `outputFile: "manual/dist/runbook-demo-{version}.pdf"`.
+- Path fields in the config support `{version}` and `{locale}` interpolation. For example: `outputFile: "manual/dist/runbook-demo-{version}-{locale}.pdf"`.
+- Localized manuals should use separate manual profiles with stable screenshot IDs, translated Markdown, and localized `labels` for PDF chrome.
 - The generated PDF should be treated as build output, not the source of truth.
 - If a screenshot reference, selector, or flow breaks, the build should break too.
 

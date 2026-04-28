@@ -8,7 +8,8 @@ import type { RunbookConfig } from "./shared/types.js";
 const DEFAULT_CONFIG_PATH = "manual/manual.config.mjs";
 
 function expandPathTemplates(config: RunbookConfig): RunbookConfig {
-  const expand = (value: string): string => value.replaceAll("{version}", config.version);
+  const expand = (value: string): string =>
+    value.replaceAll("{version}", config.version).replaceAll("{locale}", config.locale);
 
   return {
     ...config,

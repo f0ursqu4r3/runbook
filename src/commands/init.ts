@@ -48,6 +48,11 @@ function buildConfigSource(targetDir: string, productName: string, title: string
   viewport: { width: 1440, height: 900 },
   locale: "en-US",
   timezone: "UTC",
+  labels: {
+    contentsTitle: "Contents",
+    versionLabel: "Version",
+    generatedLabel: "Generated"
+  },
   theme: {
     primary: "#0f172a",
     accent: "#d97706",
@@ -269,10 +274,10 @@ function buildTemplateSource(): string {
     #v(0.8cm)
     #text(26pt, weight: "bold", fill: runbook_primary)[#title]
     #v(0.35cm)
-    #text(11pt, fill: runbook_muted)[Version #version]
+    #text(11pt, fill: runbook_muted)[#runbook_label_version #version]
     #line(length: 2.8in, stroke: (paint: runbook_accent, thickness: 1.4pt))
     #v(0.25cm)
-    #text(10pt, fill: runbook_muted)[Generated #generated_at]
+    #text(10pt, fill: runbook_muted)[#runbook_label_generated #generated_at]
   ]
 ]
 
@@ -320,6 +325,7 @@ export async function runInit(options: InitOptions = {}): Promise<InitResult> {
     await ensureDir(path.join(absoluteTargetDir, "chapters"));
     await ensureDir(path.join(absoluteTargetDir, "flows"));
     await ensureDir(path.join(absoluteTargetDir, "assets"));
+    await ensureDir(path.join(absoluteTargetDir, "assets", "screenshots"));
     await ensureDir(path.join(absoluteTargetDir, "template"));
 
     const configPath = path.join(absoluteTargetDir, "manual.config.mjs");

@@ -74,6 +74,32 @@ test("renders headings, paragraphs, and lists from markdown", async () => {
   expect(source).toContain("#runbook_cover(\"T\"");
 });
 
+test("renders localized PDF chrome labels", async () => {
+  const { config } = await makeConfigFixture();
+  config.locale = "es-MX";
+  config.labels = {
+    contentsTitle: "Contenido",
+    versionLabel: "Revision",
+    generatedLabel: "Emitido"
+  };
+  const chapters: Chapter[] = [
+    {
+      path: "x.md",
+      title: "Intro",
+      body: "# Intro\n\nFirst paragraph.\n",
+      screenshotRefs: []
+    }
+  ];
+
+  const source = await renderTypstSource(config, chapters, manifest([]));
+
+  expect(source).toContain('#let runbook_locale = "es-MX"');
+  expect(source).toContain('#let runbook_label_contents = "Contenido"');
+  expect(source).toContain('#let runbook_label_version = "Revision"');
+  expect(source).toContain('#let runbook_label_generated = "Emitido"');
+  expect(source).toContain("#outline(title: [Contenido])");
+});
+
 test("renders screenshot blocks via runbook_figure with relative path", async () => {
   const { config } = await makeConfigFixture();
   const chapters: Chapter[] = [
@@ -93,6 +119,30 @@ test("renders screenshot blocks via runbook_figure with relative path", async ()
   expect(source).toContain("#runbook_figure(\"shots/hero.png\"");
   expect(source).toContain("[Hero shot]");
   expect(source).toContain("width: 72%");
+});
+
+test("renders asset screenshot manifest entries", async () => {
+  const { config } = await makeConfigFixture();
+  const chapters: Chapter[] = [
+    {
+      path: "x.md",
+      title: "X",
+      body: "# X\n\n![[screenshot:generated-chart caption=\"Generated chart\"]]\n",
+      screenshotRefs: [{ id: "generated-chart", caption: "Generated chart" }]
+    }
+  ];
+  const m = manifest([
+    {
+      id: "generated-chart",
+      source: "asset",
+      path: path.join(config.paths.assetsDir, "screenshots", "generated-chart.png")
+    }
+  ]);
+
+  const source = await renderTypstSource(config, chapters, m);
+
+  expect(source).toContain("#runbook_figure(\"../assets/screenshots/generated-chart.png\"");
+  expect(source).toContain("[Generated chart]");
 });
 
 test("keeps heading lead-in attached to the next screenshot", async () => {
